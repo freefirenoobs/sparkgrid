@@ -2,13 +2,269 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SparkGrid - NASA MODIS & VIIRS Hot Spot Harmonization</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#070b14" />
+    <title>SparkGrid — NASA MODIS & VIIRS Active Fire Harmonization Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-      body, html, #root { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0d14; color: #fff; }
-      .sparkgrid-arrow-icon { background: transparent !important; border: none !important; }
-      .leaflet-container { background: #080b12 !important; }
+      :root {
+        --bg-deep: #070b14;
+        --bg-panel: rgba(12, 18, 32, 0.94);
+        --bg-card: rgba(20, 29, 49, 0.85);
+        --bg-card-hover: rgba(30, 41, 69, 0.95);
+        --border-subtle: rgba(148, 163, 184, 0.16);
+        --border-bright: rgba(56, 189, 248, 0.45);
+        --accent-fire: #ff2a5f;
+        --accent-modis: #ff6b00;
+        --accent-dual: #a855f7;
+        --accent-wind: #38bdf8;
+        --accent-flare: #eab308;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body, html, #root {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100dvh;
+        overflow: hidden;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-main);
+      }
+
+      code, .mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(7, 11, 20, 0.5);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, 0.45);
+        border-radius: 999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.7);
+      }
+
+      .sparkgrid-arrow-icon {
+        background: transparent !important;
+        border: none !important;
+      }
+
+      .leaflet-container {
+        background: #070b14 !important;
+        font-family: 'Inter', sans-serif !important;
+      }
+
+      .leaflet-popup-content-wrapper {
+        background: rgba(12, 18, 32, 0.96) !important;
+        color: #f8fafc !important;
+        border: 1px solid rgba(56, 189, 248, 0.35) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7) !important;
+        backdrop-filter: blur(10px);
+      }
+      .leaflet-popup-tip {
+        background: rgba(12, 18, 32, 0.96) !important;
+      }
+      .leaflet-popup-close-button {
+        color: #94a3b8 !important;
+      }
+      .leaflet-control-zoom {
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 10px !important;
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.5) !important;
+      }
+      .leaflet-control-zoom a {
+        background: rgba(12, 18, 32, 0.92) !important;
+        color: #f8fafc !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+      }
+      .leaflet-control-zoom a:hover {
+        background: rgba(30, 41, 69, 0.95) !important;
+      }
+
+      /* App Shell Layout */
+      .sg-app {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100dvh;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Top Command Header */
+      .sg-header {
+        height: 54px;
+        min-height: 54px;
+        background: linear-gradient(90deg, #0b1120 0%, #0f172a 50%, #0b1120 100%);
+        border-bottom: 1px solid var(--border-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        z-index: 1100;
+        gap: 12px;
+      }
+
+      .sg-workspace {
+        flex: 1;
+        display: flex;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Desktop Sidebar */
+      .sg-sidebar {
+        width: 410px;
+        min-width: 410px;
+        height: 100%;
+        background: var(--bg-panel);
+        border-right: 1px solid var(--border-subtle);
+        display: flex;
+        flex-direction: column;
+        z-index: 1020;
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s ease;
+      }
+      .sg-sidebar.collapsed {
+        width: 0;
+        min-width: 0;
+        overflow: hidden;
+        border-right: none;
+      }
+
+      .sg-map-area {
+        flex: 1;
+        height: 100%;
+        position: relative;
+      }
+
+      /* Mobile Quick Pills & Bottom Navigation Dock (Hidden on Desktop) */
+      .sg-mobile-pills {
+        display: none;
+      }
+      .sg-mobile-dock {
+        display: none;
+      }
+      .sg-mobile-sheet-header {
+        display: none;
+      }
+
+      @keyframes pulseGlow {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.45; transform: scale(1.18); }
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 8px #10b981;
+        animation: pulseGlow 2s infinite;
+      }
+
+      /* Responsive Smartphone & Tablet Design */
+      @media (max-width: 900px) {
+        .sg-header {
+          height: 48px;
+          min-height: 48px;
+          padding: 0 10px;
+        }
+        .sg-hide-mobile {
+          display: none !important;
+        }
+
+        /* Turn Sidebar into a Native Slide-Up Mobile Bottom Sheet */
+        .sg-sidebar {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 58px;
+          width: 100% !important;
+          min-width: 100% !important;
+          height: auto;
+          max-height: 64dvh;
+          border-right: none;
+          border-top: 1px solid rgba(56, 189, 248, 0.35);
+          border-radius: 18px 18px 0 0;
+          box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.75);
+          backdrop-filter: blur(16px);
+          z-index: 1050;
+          transform: translateY(0);
+        }
+        .sg-sidebar.mobile-hidden {
+          transform: translateY(110%);
+          pointer-events: none;
+        }
+
+        .sg-mobile-sheet-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 14px 4px 14px;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .sg-mobile-pills {
+          display: flex;
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          right: 8px;
+          z-index: 1010;
+          gap: 6px;
+          overflow-x: auto;
+          padding-bottom: 4px;
+          scrollbar-width: none;
+        }
+        .sg-mobile-pills::-webkit-scrollbar {
+          display: none;
+        }
+
+        .sg-mobile-dock {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          height: 58px;
+          min-height: 58px;
+          background: #090e1a;
+          border-top: 1px solid var(--border-subtle);
+          z-index: 1080;
+          padding: 4px 6px;
+        }
+
+        .sg-floating-legend {
+          top: auto !important;
+          bottom: 70px !important;
+          right: 8px !important;
+          max-width: 210px !important;
+          padding: 8px 10px !important;
+          font-size: 10px !important;
+        }
+
+        /* Move Leaflet Zoom Controls below mobile pills */
+        .leaflet-top.leaflet-left {
+          top: 48px !important;
+        }
+      }
     </style>
   </head>
   <body>
