@@ -2,7 +2,7 @@ import json
 import os
 import subprocess
 from typing import Optional
-from fastapi import FastAPI, Query, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -25,6 +25,7 @@ GEOJSON_PATH = "/home/azureuser/sparkgrid/data/harmonized_hotspots.geojson"
 PIPELINE_SCRIPT = "/home/azureuser/sparkgrid/data-pipeline/harmonize.py"
 PYTHON_VENV = "/home/azureuser/sparkgrid/venv/bin/python"
 FRONTEND_DIST = "/home/azureuser/sparkgrid/frontend/dist"
+DEPLOY_SCRIPT = "/home/azureuser/sparkgrid/deploy.sh"
 
 _cached_data = None
 _last_mtime = 0
@@ -121,6 +122,19 @@ def run_harmonization_task():
 def trigger_pipeline(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_harmonization_task)
     return {"status": "accepted", "message": "Harmonization pipeline triggered in background"}
+
+def run_deployment_task():
+    subprocess.run([DEPLOY_SCRIPT], check=False)
+
+@app.post("/api/deploy")
+def trigger_deploy(background_tasks: BackgroundTasks, x_deploy_token: Optional[str] = Header(None), token: Optional[str] = Query(None)):
+    secret = os.environ.get("SPARKGRID_DEPLOY_TOKEN", "sparkgrid2026")
+    provided = x_deploy_token or token
+    if provided != secret:
+        raise HTTPException(status_code=403, detail="Unauthorized deploy token")
+    
+    background_tasks.add_task(run_deployment_task)
+    return {"status": "accepted", "message": "SparkGrid deployment script triggered in background"}
 
 # Mount frontend build at /
 if os.path.exists(FRONTEND_DIST):
