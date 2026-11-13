@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 
 const BASEMAPS = {
   dark: {
@@ -32,7 +32,7 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/hotspots?limit=3000').then(r => r.json()),
+      fetch('/api/hotspots?limit=5000').then(r => r.json()),
       fetch('/api/hotspots/stats').then(r => r.json())
     ]).then(([hotspots, summaryStats]) => {
       setData(hotspots);
@@ -44,18 +44,34 @@ export default function App() {
     });
   }, []);
 
-  const getColor = (isMulti, sensors) => {
-    if (isMulti) return '#a855f7'; // Purple for Multi-Sensor Harmonized
-    if (sensors.includes('VIIRS')) return '#ef4444'; // Red for VIIRS 375m
+  const getColor = (p) => {
+    const isInd = String(p.is_industrial).toLowerCase() === 'true';
+    if (isInd) return '#eab308'; // Yellow for Industrial Flares
+    if (p.is_multi_sensor) return '#a855f7'; // Purple for Multi-Sensor Harmonized
+    const inst = p.instrument || (p.sensors && p.sensors.length ? p.sensors[0] : '');
+    if (inst === 'VIIRS' || (p.sensors && p.sensors.includes('VIIRS'))) return '#ef4444'; // Red for VIIRS 375m
     return '#f97316'; // Orange for MODIS 1km
   };
 
+  const getFrp = (p) => {
+    return Number(p.total_frp_mw || p.frp_mw || 0);
+  };
+
   const filteredFeatures = data?.features?.filter(f => {
-    const p = f.properties;
-    if (p.total_frp_mw < minFrp) return false;
-    if (filterSensor === 'multi' && !p.is_multi_sensor) return false;
-    if (filterSensor === 'viirs' && (p.is_multi_sensor || !p.sensors.includes('VIIRS'))) return false;
-    if (filterSensor === 'modis' && (p.is_multi_sensor || !p.sensors.includes('MODIS'))) return false;
+    const p = f.properties || {};
+    const frp = getFrp(p);
+    if (frp < minFrp) return false;
+
+    const isInd = String(p.is_industrial).toLowerCase() === 'true';
+    const isMulti = Boolean(p.is_multi_sensor);
+    const inst = p.instrument || (p.sensors && p.sensors.length ? p.sensors[0] : '');
+
+    if (filterSensor === 'multi' && !isMulti) return false;
+    if (filterSensor === 'viirs' && (isMulti || (inst !== 'VIIRS' && (!p.sensors || !p.sensors.includes('VIIRS'))))) return false;
+    if (filterSensor === 'modis' && (isMulti || (inst !== 'MODIS' && (!p.sensors || !p.sensors.includes('MODIS'))))) return false;
+    if (filterSensor === 'industrial' && !isInd) return false;
+    if (filterSensor === 'wind' && p.spread_heading_deg === null) return false;
+
     return true;
   }) || [];
 
@@ -65,19 +81,26 @@ export default function App() {
       <div className="hud">
         <h2>🛰️ SparkGrid Harmonizer</h2>
         <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8' }}>
-          NASA Space Apps Cairo 2026 • MODIS C6.1 & VIIRS 375m
+          NASA Space Apps Cairo 2026 • MODIS & VIIRS Engine
         </p>
 
         {stats && (
           <div className="stat-grid">
             <div className="stat-card">
               <div className="val">{stats.total_clusters.toLocaleString()}</div>
-              <div className="lbl">Harmonized Clusters</div>
+              <div className="lbl">Active Hotspots</div>
             </div>
-            <div className="stat-card" style={{ borderLeft: '3px solid #a855f7' }}>
-              <div className="val" style={{ color: '#a855f7' }}>{stats.multi_sensor_verified_clusters}</div>
-              <div className="lbl">Dual-Sensor Verified</div>
-            </div>
+            {stats.multi_sensor_verified_clusters > 0 ? (
+              <div className="stat-card" style={{ borderLeft: '3px solid #a855f7' }}>
+                <div className="val" style={{ color: '#a855f7' }}>{stats.multi_sensor_verified_clusters}</div>
+                <div className="lbl">Dual-Sensor Verified</div>
+              </div>
+            ) : (
+              <div className="stat-card" style={{ borderLeft: '3px solid #38bdf8' }}>
+                <div className="val" style={{ color: '#38bdf8' }}>{stats.with_wind_vectors || 0}</div>
+                <div className="lbl">With Wind Vectors</div>
+              </div>
+            )}
             <div className="stat-card" style={{ borderLeft: '3px solid #ef4444' }}>
               <div className="val" style={{ color: '#ef4444' }}>{stats.viirs_only_clusters.toLocaleString()}</div>
               <div className="lbl">VIIRS (375m)</div>
@@ -116,10 +139,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sensor Filter Controls */}
+        {/* Sensor & Feature Filter Controls */}
         <div style={{ marginTop: '12px' }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            🔥 Sensor Layer Filter:
+            🔥 Feature Filters:
           </div>
           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
             <button
@@ -129,39 +152,39 @@ export default function App() {
               All ({filteredFeatures.length})
             </button>
             <button
-              onClick={() => setFilterSensor('multi')}
-              className={`filter-btn ${filterSensor === 'multi' ? 'active' : ''}`}
-              style={{ borderColor: '#a855f7' }}
-            >
-              🟣 Dual-Verified
-            </button>
-            <button
               onClick={() => setFilterSensor('viirs')}
               className={`filter-btn ${filterSensor === 'viirs' ? 'active' : ''}`}
               style={{ borderColor: '#ef4444' }}
             >
-              🔴 VIIRS (375m)
+              🔴 VIIRS
             </button>
             <button
               onClick={() => setFilterSensor('modis')}
               className={`filter-btn ${filterSensor === 'modis' ? 'active' : ''}`}
               style={{ borderColor: '#f97316' }}
             >
-              🟠 MODIS (1km)
+              🟠 MODIS
+            </button>
+            <button
+              onClick={() => setFilterSensor('wind')}
+              className={`filter-btn ${filterSensor === 'wind' ? 'active' : ''}`}
+              style={{ borderColor: '#38bdf8' }}
+            >
+              💨 Wind Vectors
             </button>
           </div>
         </div>
 
         {/* Legend */}
         <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.73rem', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: '#a855f7' }}>● Multi-Sensor</span>
-          <span style={{ color: '#ef4444' }}>● VIIRS 375m</span>
-          <span style={{ color: '#f97316' }}>● MODIS 1km</span>
+          <span style={{ color: '#ef4444' }}>● VIIRS (375m)</span>
+          <span style={{ color: '#f97316' }}>● MODIS (1km)</span>
+          <span style={{ color: '#38bdf8' }}>💨 Wind Spread</span>
         </div>
       </div>
 
       {/* Map Viewport */}
-      <MapContainer id="map" center={[15.0, 25.0]} zoom={4} style={{ width: '100%', height: '100%' }}>
+      <MapContainer id="map" center={[26.8, 30.8]} zoom={6} style={{ width: '100%', height: '100%' }}>
         <TileLayer
           key={currentBasemap}
           attribution={BASEMAPS[currentBasemap].attribution}
@@ -169,38 +192,52 @@ export default function App() {
           maxZoom={BASEMAPS[currentBasemap].maxZoom}
         />
 
-        {filteredFeatures.map(f => {
+        {filteredFeatures.map((f, idx) => {
           const [lon, lat] = f.geometry.coordinates;
-          const p = f.properties;
-          const color = getColor(p.is_multi_sensor, p.sensors);
-          const radius = Math.min(Math.max(p.total_frp_mw / 25, 4), 16);
+          const p = f.properties || {};
+          const color = getColor(p);
+          const frp = getFrp(p);
+          const radius = Math.min(Math.max(frp / 10, 4), 16);
 
           return (
             <CircleMarker
-              key={p.cluster_id}
+              key={idx}
               center={[lat, lon]}
               radius={radius}
               pathOptions={{
                 color: color,
                 fillColor: color,
                 fillOpacity: currentBasemap === 'satellite' ? 0.9 : 0.75,
-                weight: p.is_multi_sensor ? 2.5 : 1
+                weight: p.spread_heading_deg !== null ? 2.5 : 1
               }}
             >
               <Popup>
                 <div style={{ color: '#0f172a', fontFamily: 'sans-serif', fontSize: '0.85rem', lineHeight: '1.4' }}>
                   <div style={{ fontWeight: 'bold', fontSize: '1rem', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '6px' }}>
-                    Cluster #{p.cluster_id} {p.is_multi_sensor ? '🟣 Dual-Sensor' : ''}
+                    🔥 Active Fire Hotspot
                   </div>
-                  <div><strong>Harmonization:</strong> {p.harmonization_status}</div>
-                  <div><strong>Sensors:</strong> {p.sensors.join(' + ')}</div>
-                  <div><strong>Total FRP:</strong> <span style={{ color: '#dc2626', fontWeight: 'bold' }}>{p.total_frp_mw} MW</span></div>
-                  <div><strong>Resolution:</strong> {p.effective_resolution_m} m</div>
-                  <div><strong>Confidence:</strong> {(p.confidence_score * 100).toFixed(0)}%</div>
-                  <div><strong>Detections:</strong> {p.detection_count} (MODIS: {p.modis_detections}, VIIRS: {p.viirs_detections})</div>
-                  <div><strong>Max Brightness:</strong> {p.max_brightness_k} K</div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
-                    Overpass: {p.earliest_detection} UTC
+                  <div><strong>Instrument:</strong> {p.instrument || (p.sensors ? p.sensors.join(' + ') : 'Satellite')} ({p.source_resolution_m || 375}m)</div>
+                  <div><strong>Satellite:</strong> {p.satellite || 'NASA Constellation'}</div>
+                  <div><strong>Fire Radiative Power:</strong> <span style={{ color: '#dc2626', fontWeight: 'bold' }}>{frp.toFixed(2)} MW</span></div>
+                  <div><strong>Confidence:</strong> {p.confidence || 'Nominal'}</div>
+                  
+                  {p.spread_heading_deg !== null && (
+                    <div style={{ marginTop: '6px', padding: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '4px' }}>
+                      <div style={{ color: '#166534', fontWeight: 'bold', fontSize: '0.8rem' }}>💨 Open-Meteo Wind Spread</div>
+                      <div><strong>Wind Speed:</strong> {p.wind_speed_mps} m/s</div>
+                      <div><strong>Wind From:</strong> {p.wind_direction_deg}°</div>
+                      <div><strong>Predicted Spread:</strong> <span style={{ color: '#b91c1c', fontWeight: 'bold' }}>Heading {p.spread_heading_deg}°</span></div>
+                    </div>
+                  )}
+
+                  {String(p.is_industrial).toLowerCase() === 'true' && (
+                    <div style={{ marginTop: '4px', color: '#854d0e', fontWeight: 'bold' }}>
+                      ⚠️ Static Industrial Flare Detected
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '6px' }}>
+                    Acquired: {p.acq_datetime}
                   </div>
                 </div>
               </Popup>
