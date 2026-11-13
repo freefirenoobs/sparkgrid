@@ -269,26 +269,28 @@ The backend is built with FastAPI 0.115+ in `/home/azureuser/sparkgrid/backend/m
 
 #### 3. `GET /api/hotspots/stats`
 - **Description:** Real-time mathematical aggregation across all active clusters.
-- **Response Example (Live 16,662 Global Dataset):**
+- **Response Example (Live 11,505 Harmonized Global + Egypt Dataset):**
   ```json
   {
-    "total_clusters": 16662,
-    "multi_sensor_verified_clusters": 0,
-    "viirs_only_clusters": 13902,
-    "modis_only_clusters": 2760,
-    "with_wind_vectors": 10218,
-    "industrial_flares": 0,
-    "total_frp_mw": 170379.55,
-    "mean_frp_mw": 10.23,
-    "max_frp_mw": 858.91,
+    "total_clusters": 11505,
+    "multi_sensor_verified_clusters": 672,
+    "viirs_only_clusters": 10571,
+    "modis_only_clusters": 1606,
+    "with_wind_vectors": 10106,
+    "industrial_flares": 175,
+    "total_frp_mw": 296892.71,
+    "mean_frp_mw": 25.81,
+    "max_frp_mw": 3635.08,
     "metadata": {
       "title": "SparkGrid Harmonized Hotspots (NASA FIRMS MODIS & VIIRS)",
-      "generated_at": "2026-11-13T12:52:29.775408+00:00",
-      "total_hotspots": 16662,
-      "modis_count": 2760,
-      "viirs_count": 13902,
-      "with_wind_vectors": 10218,
-      "total_frp_mw": 170379.55
+      "generated_at": "2026-11-13T13:32:11.000528+00:00",
+      "total_clusters": 11505,
+      "multi_sensor_verified_clusters": 672,
+      "modis_count": 1600,
+      "viirs_count": 10369,
+      "with_wind_vectors": 10106,
+      "total_frp_mw": 296033.52,
+      "industrial_flares": 175
     }
   }
   ```
@@ -374,45 +376,48 @@ classDiagram
     }
 ```
 
-### 6.1 Role 1: Lead Architect & DevOps (Amr)
+### 6.1 Role 1: Lead Architect & DevOps (Amr) — ✅ COMPLETED
 - **Primary Domain:** Cloud infrastructure, Azure VMs (`Jarvis-Cloud` & `RemoteDesktop-VM`), Cloudflare Tunnels, systemd, memory tuning, and CI/CD pipelines.
-- **Key Responsibilities:**
-  - Maintains 100% uptime for `sparkgrid.masarat.app`, `sparkgrid-api.masarat.app`, and `sparkgrid-ai.masarat.app`.
-  - Ensures the 8 GB swapfile and 2-minute auto-deploy cron continue running reliably.
-  - Unblocks teammates by managing GitHub repository permissions and server environment variables.
+- **Completed Deliverables:**
+  - 100% uptime across `sparkgrid.masarat.app`, `sparkgrid-api.masarat.app`, and `sparkgrid-ai.masarat.app`.
+  - Official GitHub repo (`https://github.com/freefirenoobs/sparkgrid`) with collaborators (`Ryuza000`, `ahmedhagar47`, `saleh851`), 2-minute auto-deploy cron (`deploy.sh`), and instant deploy webhook (`POST /api/deploy?token=sparkgrid2026`).
 
-### 6.2 Role 2: Data Pipeline Lead (Ryuza / Sharaf)
-- **Primary Domain:** `/data-pipeline/harmonize.py`
-- **Key Responsibilities:**
-  - Ingests NASA FIRMS NRT feeds (MODIS C6.1 + VIIRS NOAA-20/21).
-  - Maintains the static Gulf of Suez industrial flare mask and expands it with dynamic multi-temporal persistence filtering.
-  - Refines Haversine DBSCAN spatial clustering and optimizes Open-Meteo batch querying for global bounding boxes.
+### 6.2 Role 2: Data Pipeline Lead (Ryuza / Sharaf / Amr) — ✅ COMPLETED
+- **Primary Domain:** `/data-pipeline/harmonize.py` & `/data/harmonized_hotspots.geojson`
+- **Completed Deliverables:**
+  - Fixed regression where `pd.concat` bypassed DBSCAN (`multi_sensor_verified_clusters: 0 -> 672`).
+  - Fused **Spatiotemporal Haversine DBSCAN** ($\epsilon = 1.5\text{ km}$, $\Delta t \le 120\text{ min}$), FRP-weighted centroids, and Bayesian confidence fusion across the global bounding box (`-180,-90,180,90`) plus 3-day Egypt data (`SG-EG-*`).
+  - Enriched **10,106 clusters** with Open-Meteo wind speed (`wind_speed_mps`), wind direction (`wind_dir_deg`), and fire-spread heading (`spread_heading_deg`) using 50-coordinate batched queries.
+  - Flagged **175 industrial oil/gas flares** (`is_industrial: true`) across the Gulf of Suez, Western Desert/Sinai, Basra/Persian Gulf, Niger Delta, and Permian Basin.
 
-### 6.3 Role 3: Frontend Map Lead
-- **Primary Domain:** `/frontend/src/App.jsx` (Map Viewport & Layers)
-- **Key Responsibilities:**
-  - Configures Leaflet layer controls (Dark HUD, Esri Satellite, OpenStreetMap).
-  - Implements **Sensor Footprint Visualizer**: drawing a $1\text{ km} \times 1\text{ km}$ bounding box for MODIS vs a $375\text{ m} \times 375\text{ m}$ box for VIIRS when a fire is clicked.
-  - Styles dynamic fire markers based on Fire Radiative Power (MW) and wind spread direction arrows.
+### 6.3 Role 3: Frontend Map Lead — ✅ COMPLETED
+- **Primary Domain:** `/frontend/src/App.jsx` & `/frontend/index.html`
+- **Completed Deliverables:**
+  - Pulls live wind-enriched hotspots from `GET /api/hotspots?limit=500&has_wind=true` by default (with a 1-click toggle to view all 3,000 global clusters).
+  - **🏹 Fire-Spread Direction Arrows (`spread_heading_deg`):** Rotated SVG directional arrow markers (`L.divIcon` rotated by `spread_heading_deg`) plus dashed spread trajectory vectors.
+  - **📐 $1\text{ km}$ vs $375\text{ m}$ Footprint Polygons (`source_resolution_m`):** Semi-transparent metric squares around each point ($1000\text{ m} \times 1000\text{ m}$ orange squares for MODIS, $375\text{ m} \times 375\text{ m}$ crimson squares for VIIRS, and nested $375\text{ m}$ inside $1000\text{ m}$ for Dual-Sensor Verified clusters).
+  - **🌪️ Wind Speed Heat Layer (`wind_speed_mps`):** Dynamic marker sizing and 4-tier thermal color intensity (`<2.5 m/s` Low Cyan, `2.5–5 m/s` Moderate Yellow, `5–8 m/s` High Orange, `>8 m/s` Extreme Crimson) with outer heat halos.
+  - **🏭 Industrial Flare Toggle (`is_industrial`):** Checkbox and 3-way selector to **Highlight** (`#eab308` hazard yellow), **Gray Out** (`#64748b` muted gray at 28% opacity), or **Hide** industrial flares.
+  - **🎯 Instant Judge Demo Zoom Presets:** 1-click camera fly-to buttons for **Egypt 1km vs 375m (Beni Suef)**, **Suez Flares + 1km**, **Dual-Sensor Megafire (2,006 MW)**, and **Global Overview**.
 
-### 6.4 Role 4: Frontend Analytics HUD Lead
+### 6.4 Role 4: Frontend Analytics HUD Lead — 🔄 NEXT UP
 - **Primary Domain:** `/frontend/src/App.jsx` (Dashboard & Controls)
 - **Key Responsibilities:**
   - Implements the **24-Hour Time-Scrubber Slider**: allowing users to press "Play" and watch active fires ignite chronologically over the day.
   - Adds one-click **"Export Harmonized GeoJSON"** and **"Download CSV"** buttons in the HUD for GIS professionals.
   - Displays summary statistics: active fires, dual-verified clusters, total MW energy, and wind-vector coverage.
 
-### 6.5 Role 5: AI Tactical Briefing Engineer
+### 6.5 Role 5: AI Tactical Briefing Engineer — 🔄 IN PROGRESS
 - **Primary Domain:** `/backend/main.py` & AI Integration
 - **Key Responsibilities:**
-  - Builds `POST /api/hotspots/{cluster_id}/briefing` combining coordinates, FRP, wind speed, and heading.
-  - Connects to Open WebUI / LLM to generate automated 3-bullet incident action plans for emergency responders (e.g., *"Wind 4.2 m/s toward 325°: High evacuation priority for settlements to the northwest; allocate air tankers to southern flank"*).
+  - Enhances `POST /api/ai/chat` and `/api/hotspots/{cluster_id}/briefing` combining coordinates, FRP, wind speed, and spread heading.
+  - Connects to Open WebUI / LLM to generate automated 3-bullet incident action plans for emergency responders.
 
-### 6.6 Role 6: NASA Pitch, Rubric & Video Lead
+### 6.6 Role 6: NASA Pitch, Rubric & Video Lead — 🔄 IN PROGRESS
 - **Primary Domain:** `/docs/`
 - **Key Responsibilities:**
-  - Produces the official **2-minute demo video** demonstrating live features at `https://sparkgrid.masarat.app`.
-  - Builds the **7-slide pitch deck** using verified project benchmark statistics (2.24× reduction, 16,662 global fires, 10,218 wind vectors).
+  - Produces the official **2-minute demo video** demonstrating live features at `https://sparkgrid.masarat.app` (using the new Judge Demo Zoom Presets!).
+  - Builds the **7-slide pitch deck** using verified project benchmark statistics (`2.45×` reduction, `11,505` harmonized clusters, `672` dual-sensor verified fires, `10,106` wind vectors, `175` industrial flares).
   - Finalizes answers to the NASA Space Apps submission portal questions.
 
 ---
@@ -421,19 +426,19 @@ classDiagram
 
 Hermes must use these exact real-world numbers when drafting slides, answering judges, or preparing team documentation:
 
-### Benchmark A: Northern & Central Africa (24h Intensive Evaluation)
-- **Raw Input Telemetry:** 26,137 detections (3,773 MODIS 1km + 22,364 VIIRS 375m).
-- **Harmonized Clusters:** 11,660 unified hotspots.
-- **Redundancy Reduction:** **2.24× Data Compression Ratio** (over 14,000 duplicate alarms eliminated).
-- **Dual-Sensor Cross-Validated Fires:** **72 verified fires** detected simultaneously by both instruments with reinforced Bayesian confidence.
-- **Cumulative Radiative Energy:** 280,039.01 MW FRP.
+### Benchmark A: Northern & Central Africa + Egypt (Intensive Evaluation)
+- **Raw Input Telemetry:** 26,137 detections (3,773 MODIS 1km + 22,364 VIIRS 375m) + 207 Egypt 3-day detections.
+- **Harmonized Clusters:** 11,660 unified regional hotspots (45 featured Egypt clusters in the top 500 wind slice).
+- **Redundancy Reduction:** **2.24× – 2.45× Data Compression Ratio** (over 16,000 duplicate alarms eliminated globally).
 
-### Benchmark B: Live Planetary World Run (`-180,-90,180,90`)
-- **Total Global Hotspots:** 16,662 active fires.
-- **Sensor Distribution:** 13,902 VIIRS (375m) + 2,760 MODIS (1km).
-- **Meteorological Enrichment:** **10,218 hotspots enriched with live Open-Meteo wind vectors** across 1,677 global atmospheric cells.
-- **Cumulative Global Energy:** 170,379.55 MW FRP (Peak fire: 858.91 MW).
-- **Pipeline Execution Speed:** Ingestion, normalization, flare masking, and wind batching completed in **30.5 seconds**.
+### Benchmark B: Live Planetary World + Egypt Harmonized Run (`-180,-90,180,90`)
+- **Raw Planetary Input:** 27,672 satellite detections.
+- **Harmonized Unified Clusters:** **11,505 clusters** (**2.45× compression ratio**).
+- **Multi-Sensor Cross-Validated Clusters (`MODIS+VIIRS`):** **672 dual-verified fires** confirmed simultaneously by both instruments.
+- **Sensor Distribution:** 10,571 VIIRS-only (375m) + 1,606 MODIS-containing (1000m) clusters.
+- **Meteorological Enrichment:** **10,106 hotspots enriched with live Open-Meteo wind vectors** (`wind_speed_mps`, `wind_dir_deg`, `spread_heading_deg`).
+- **Industrial Flare Filtering:** **175 persistent oil/gas flares** flagged (`is_industrial: true`).
+- **Cumulative Global Energy:** **296,892.71 MW FRP** (Mean: 25.81 MW, Peak cluster: 3,635.08 MW).
 
 ---
 
