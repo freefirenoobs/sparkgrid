@@ -4,13 +4,13 @@ SparkGrid Space Apps Cairo 2026 — Roles 1 & 2 Fusion
 
 Features:
 - Dual-sensor schema normalization (MODIS 1km + VIIRS 375m)
-- Industrial flare filtering (static + dynamic persistence)
+- Industrial flare filtering (Gulf of Suez, Basra/Persian Gulf, Sahara, Sirte Basin)
 - Great-Circle Haversine DBSCAN spatial clustering (1.5 km)
 - Orbital temporal envelope fusion (120 min)
 - FRP-weighted flame-front centroid computation
 - Bayesian multi-sensor confidence fusion (1 - prod(1 - c_i))
 - Subpixel footprint refinement (1000m -> 375m)
-- Open-Meteo real-time atmospheric wind spread vectors
+- Open-Meteo real-time atmospheric wind spread vectors (50-coord batching)
 Outputs: harmonized_hotspots.geojson + harmonized_fires.csv
 """
 
@@ -18,9 +18,9 @@ import os
 import io
 import sys
 import json
+import time
 import asyncio
 import requests
-import httpx
 import numpy as np
 import pandas as pd
 from datetime import datetime, timezone
@@ -103,10 +103,31 @@ def build_static_flare_mask():
     }
 
 
+def is_in_flare_basin(lat, lon, flare_mask):
+    if (round(lat, 2), round(lon, 2)) in flare_mask:
+        return True
+    # Gulf of Suez (Egypt) offshore/coastal oil rigs
+    if 27.6 <= lat <= 29.7 and 32.5 <= lon <= 33.9:
+        return True
+    # Western Desert / Alexandria refineries (Egypt)
+    if (31.02 <= lat <= 31.15 and 29.75 <= lon <= 29.90) or (29.7 <= lat <= 30.0 and 28.3 <= lon <= 28.8):
+        return True
+    # Iraq / Basra / Persian Gulf super-giant oil fields
+    if 29.0 <= lat <= 32.5 and 47.0 <= lon <= 51.5:
+        return True
+    # Algeria Hassi Messaoud Sahara desert oil fields
+    if 31.2 <= lat <= 32.2 and 5.6 <= lon <= 6.8:
+        return True
+    # Libya Sirte Basin desert oil fields
+    if 28.2 <= lat <= 30.2 and 18.5 <= lon <= 21.5:
+        return True
+    return False
+
+
 def flag_industrial_flares(df, flare_mask):
     print("Applying Industrial Gas Flare Filter...")
     df["is_industrial"] = df.apply(
-        lambda row: (round(row["latitude"], 2), round(row["longitude"], 2)) in flare_mask,
+        lambda row: is_in_flare_basin(row["latitude"], row["longitude"], flare_mask),
         axis=1
     )
     flares = df["is_industrial"].sum()
@@ -116,10 +137,6 @@ def flag_industrial_flares(df, flare_mask):
 
 # ── 4. HAVERSINE DBSCAN SPATIO-TEMPORAL FUSION ────────────
 def harmonize_spatio_temporal(df, spatial_eps_km=1.5, max_time_diff_min=120.0):
-    """
-    Spatio-temporal clustering using Great-Circle Haversine DBSCAN + temporal validation.
-    Clusters overlapping MODIS & VIIRS footprints into unified high-confidence hotspots.
-    """
     print(f"Executing Spatio-Temporal DBSCAN Harmonization (eps={spatial_eps_km} km, window={max_time_diff_min} min)...")
     
     coords_rad = np.radians(df[["latitude", "longitude"]].values)
@@ -163,7 +180,6 @@ def harmonize_spatio_temporal(df, spatial_eps_km=1.5, max_time_diff_min=120.0):
         instruments = sorted(list(grp["instrument"].unique()))
         is_multi = len(instruments) > 1
 
-        # FRP-Weighted Centroid
         weights = grp["frp_mw"].values
         if weights.sum() > 0:
             c_lat = float(np.average(grp["latitude"], weights=weights))
@@ -176,7 +192,6 @@ def harmonize_spatio_temporal(df, spatial_eps_km=1.5, max_time_diff_min=120.0):
         mean_frp = float(grp["frp_mw"].mean())
         max_bright = float(grp["brightness_ti4_k"].max())
 
-        # Bayesian Combined Confidence Fusion: C = 1 - prod(1 - c_i)
         conf_scores = grp["norm_confidence"].values
         combined_conf = float(1.0 - np.prod([1.0 - c for c in conf_scores]))
         combined_conf = min(round(combined_conf, 3), 1.0)
@@ -197,12 +212,12 @@ def harmonize_spatio_temporal(df, spatial_eps_km=1.5, max_time_diff_min=120.0):
             "cluster_id": int(c_id),
             "latitude": round(c_lat, 5),
             "longitude": round(c_lon, 5),
-            "is_multi_sensor": is_multi,
+            "is_multi_sensor": bool(is_multi),
             "harmonization_status": status,
             "sensors": instruments,
             "instrument": "+".join(instruments) if is_multi else instruments[0],
             "satellite": "+".join(satellites),
-            "detection_count": len(grp),
+            "detection_count": int(len(grp)),
             "modis_detections": int(sum(grp["instrument"] == "MODIS")),
             "viirs_detections": int(sum(grp["instrument"] == "VIIRS")),
             "total_frp_mw": round(total_frp, 2),
@@ -213,7 +228,7 @@ def harmonize_spatio_temporal(df, spatial_eps_km=1.5, max_time_diff_min=120.0):
             "confidence": conf_cat,
             "effective_resolution_m": effective_res,
             "source_resolution_m": effective_res,
-            "is_industrial": is_ind,
+            "is_industrial": bool(is_ind),
             "earliest_detection": grp["acq_datetime"].min().isoformat(),
             "latest_detection": grp["acq_datetime"].max().isoformat(),
             "acq_datetime": grp["acq_datetime"].min().isoformat(),
@@ -227,68 +242,52 @@ def harmonize_spatio_temporal(df, spatial_eps_km=1.5, max_time_diff_min=120.0):
     return cluster_df_res
 
 
-# ── 5. OPEN-METEO WIND VECTORS ────────────────────────────
-async def fetch_wind_for_grid(client, lat, lon, unixtime, sem):
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "hourly": "wind_direction_10m,wind_speed_10m",
-        "timeformat": "unixtime",
-        "wind_speed_unit": "ms",
-        "past_days": 5
-    }
-    url = "https://api.open-meteo.com/v1/forecast"
-    try:
-        async with sem:
-            response = await client.get(url, params=params, timeout=12.0)
-            response.raise_for_status()
-            data = response.json()
-            return pd.DataFrame({
-                "time": data["hourly"]["time"],
-                "wind_direction_deg": data["hourly"]["wind_direction_10m"],
-                "wind_speed_mps": data["hourly"]["wind_speed_10m"]
-            })
-    except Exception:
-        return pd.DataFrame()
-
-
+# ── 5. OPEN-METEO WIND VECTORS (BATCHED) ──────────────────
 async def enrich_clusters_with_wind(df):
-    print("Batching Open-Meteo wind requests for cluster centroids by 1° grid...")
+    print("Batching Open-Meteo wind requests (50 coordinates per call)...")
     df["grid_lat"] = df["latitude"].round(0)
     df["grid_lon"] = df["longitude"].round(0)
 
     for col in ["wind_direction_deg", "wind_speed_mps", "spread_heading_deg"]:
         df[col] = None
 
-    grids = df.groupby(["grid_lat", "grid_lon"])
-    print(f"  Total unique grid cells to query: {len(grids)}")
+    # Prioritize MENA / Africa / Europe grid cells first
+    grids = {}
+    for idx, row in df.iterrows():
+        g_key = (int(row["grid_lat"]), int(row["grid_lon"]))
+        grids.setdefault(g_key, []).append(idx)
 
-    sem = asyncio.Semaphore(15)
-    async with httpx.AsyncClient(limits=httpx.Limits(max_connections=30, max_keepalive_connections=15)) as client:
-        tasks = []
-        grid_keys = []
-        for (g_lat, g_lon), group in grids:
-            grid_keys.append((g_lat, g_lon))
-            avg_unixtime = group["epoch_unixtime"].mean()
-            tasks.append(fetch_wind_for_grid(client, g_lat, g_lon, avg_unixtime, sem=sem))
+    grid_keys = sorted(
+        grids.keys(),
+        key=lambda k: (0 if (-10 <= k[0] <= 45 and -20 <= k[1] <= 60) else 1, -len(grids[k]))
+    )
+    print(f"  Total unique 1° grid cells to query: {len(grid_keys)}")
 
-        results = await asyncio.gather(*tasks)
-
-        for (g_lat, g_lon), weather_df in zip(grid_keys, results):
-            if weather_df.empty:
-                continue
-
-            grid_idx = df[(df["grid_lat"] == g_lat) & (df["grid_lon"] == g_lon)].index
-
-            for idx in grid_idx:
-                fire_time = df.loc[idx, "epoch_unixtime"]
-                weather_df["time_diff"] = abs(weather_df["time"] - fire_time)
-                closest = weather_df.loc[weather_df["time_diff"].idxmin()]
-
-                if pd.notna(closest["wind_direction_deg"]) and pd.notna(closest["wind_speed_mps"]):
-                    df.at[idx, "wind_direction_deg"] = float(closest["wind_direction_deg"])
-                    df.at[idx, "wind_speed_mps"] = float(closest["wind_speed_mps"])
-                    df.at[idx, "spread_heading_deg"] = float((closest["wind_direction_deg"] + 180) % 360)
+    batch_size = 50
+    for i in range(0, len(grid_keys), batch_size):
+        batch = grid_keys[i:i+batch_size]
+        lats = ",".join(str(k[0]) for k in batch)
+        lons = ",".join(str(k[1]) for k in batch)
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lats}&longitude={lons}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms"
+        try:
+            r = requests.get(url, timeout=15)
+            if r.status_code == 200:
+                data = r.json()
+                if isinstance(data, dict):
+                    data = [data]
+                for k, item in zip(batch, data):
+                    curr = item.get("current", {})
+                    w_spd = curr.get("wind_speed_10m")
+                    w_dir = curr.get("wind_direction_10m")
+                    if w_spd is not None and w_dir is not None:
+                        heading = round((float(w_dir) + 180.0) % 360.0, 1)
+                        for row_idx in grids[k]:
+                            df.at[row_idx, "wind_speed_mps"] = round(float(w_spd), 2)
+                            df.at[row_idx, "wind_direction_deg"] = round(float(w_dir), 1)
+                            df.at[row_idx, "spread_heading_deg"] = heading
+        except Exception as e:
+            print(f"  Warning on wind batch {i}: {e}")
+        time.sleep(0.15)
 
     df = df.drop(columns=["grid_lat", "grid_lon", "epoch_unixtime"])
     wind_count = df["spread_heading_deg"].notna().sum()
@@ -304,12 +303,17 @@ def export_outputs(df, geojson_path, csv_path):
         for k, v in row.items():
             if isinstance(v, (list, tuple)):
                 props[k] = list(v)
+            elif isinstance(v, (bool, np.bool_)):
+                props[k] = bool(v)
             elif isinstance(v, (np.integer, int)):
                 props[k] = int(v)
             elif isinstance(v, (np.floating, float)):
-                props[k] = None if pd.isna(v) else round(float(v), 2)
-            elif isinstance(v, (bool, np.bool_)):
-                props[k] = bool(v)
+                if pd.isna(v):
+                    props[k] = None
+                elif k in ("latitude", "longitude"):
+                    props[k] = round(float(v), 5)
+                else:
+                    props[k] = round(float(v), 2)
             elif not isinstance(v, (list, tuple, dict)) and pd.isna(v):
                 props[k] = None
             else:
@@ -319,12 +323,13 @@ def export_outputs(df, geojson_path, csv_path):
             "type": "Feature",
             "geometry": {
                 "type": "Point",
-                "coordinates": [float(row["longitude"]), float(row["latitude"])]
+                "coordinates": [round(float(row["longitude"]), 5), round(float(row["latitude"]), 5)]
             },
             "properties": props
         })
 
     multi_count = int(sum(df["is_multi_sensor"]))
+    ind_count = int(sum(df["is_industrial"]))
     modis_count = int(sum(df["sensors"].apply(lambda s: "MODIS" in s)))
     viirs_count = int(sum(df["sensors"].apply(lambda s: "VIIRS" in s)))
     with_wind = int(df["spread_heading_deg"].notna().sum())
@@ -337,6 +342,7 @@ def export_outputs(df, geojson_path, csv_path):
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "total_clusters": len(df),
             "multi_sensor_clusters": multi_count,
+            "industrial_flares": ind_count,
             "modis_count": modis_count,
             "viirs_count": viirs_count,
             "with_wind_vectors": with_wind,
@@ -349,7 +355,6 @@ def export_outputs(df, geojson_path, csv_path):
         json.dump(geojson, f, indent=2)
     print(f"[✓] Exported GeoJSON: {geojson_path}")
 
-    # CSV Export (convert list columns to string)
     csv_df = df.copy()
     if "sensors" in csv_df.columns:
         csv_df["sensors"] = csv_df["sensors"].apply(lambda s: ";".join(s) if isinstance(s, list) else str(s))
@@ -389,11 +394,6 @@ async def run_pipeline(api_key, bbox, days=1):
     if os.path.exists(gdrive_dir):
         os.system(f"cp {out_csv} {gdrive_dir}/harmonized_fires.csv 2>/dev/null || true")
 
-    print(f"\n=== SparkGrid Pipeline Succeeded ===")
-    print(f"  Total Harmonized Clusters: {len(final_df)}")
-    print(f"  Multi-Sensor Verified:    {sum(final_df['is_multi_sensor'])}")
-    print(f"  Enriched with Wind:        {final_df['spread_heading_deg'].notna().sum()}")
-    print(f"  Total FRP:                 {final_df['total_frp_mw'].sum():.1f} MW")
     return final_df
 
 
