@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+export HOME="/home/azureuser"
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 SPARKGRID_DIR="/home/azureuser/sparkgrid"
 LOG_FILE="$SPARKGRID_DIR/deploy.log"
 
