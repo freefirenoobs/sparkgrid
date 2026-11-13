@@ -88,26 +88,19 @@ export default function App() {
           <div className="stat-grid">
             <div className="stat-card">
               <div className="val">{stats.total_clusters.toLocaleString()}</div>
-              <div className="lbl">Active Hotspots</div>
+              <div className="lbl">Harmonized Clusters</div>
             </div>
-            {stats.multi_sensor_verified_clusters > 0 ? (
-              <div className="stat-card" style={{ borderLeft: '3px solid #a855f7' }}>
-                <div className="val" style={{ color: '#a855f7' }}>{stats.multi_sensor_verified_clusters}</div>
-                <div className="lbl">Dual-Sensor Verified</div>
-              </div>
-            ) : (
-              <div className="stat-card" style={{ borderLeft: '3px solid #38bdf8' }}>
-                <div className="val" style={{ color: '#38bdf8' }}>{stats.with_wind_vectors || 0}</div>
-                <div className="lbl">With Wind Vectors</div>
-              </div>
-            )}
+            <div className="stat-card" style={{ borderLeft: '3px solid #a855f7' }}>
+              <div className="val" style={{ color: '#c084fc' }}>{stats.multi_sensor_verified_clusters.toLocaleString()}</div>
+              <div className="lbl">Dual-Sensor Verified</div>
+            </div>
+            <div className="stat-card" style={{ borderLeft: '3px solid #38bdf8' }}>
+              <div className="val" style={{ color: '#38bdf8' }}>{stats.with_wind_vectors.toLocaleString()}</div>
+              <div className="lbl">With Wind Vectors</div>
+            </div>
             <div className="stat-card" style={{ borderLeft: '3px solid #ef4444' }}>
               <div className="val" style={{ color: '#ef4444' }}>{stats.viirs_only_clusters.toLocaleString()}</div>
               <div className="lbl">VIIRS (375m)</div>
-            </div>
-            <div className="stat-card" style={{ borderLeft: '3px solid #f97316' }}>
-              <div className="val" style={{ color: '#f97316' }}>{stats.modis_only_clusters.toLocaleString()}</div>
-              <div className="lbl">MODIS (1km)</div>
             </div>
           </div>
         )}
@@ -152,6 +145,13 @@ export default function App() {
               All ({filteredFeatures.length})
             </button>
             <button
+              onClick={() => setFilterSensor('multi')}
+              className={`filter-btn ${filterSensor === 'multi' ? 'active' : ''}`}
+              style={{ borderColor: '#a855f7', color: '#c084fc' }}
+            >
+              🟣 Dual-Verified ({stats?.multi_sensor_verified_clusters || 0})
+            </button>
+            <button
               onClick={() => setFilterSensor('viirs')}
               className={`filter-btn ${filterSensor === 'viirs' ? 'active' : ''}`}
               style={{ borderColor: '#ef4444' }}
@@ -168,7 +168,7 @@ export default function App() {
             <button
               onClick={() => setFilterSensor('wind')}
               className={`filter-btn ${filterSensor === 'wind' ? 'active' : ''}`}
-              style={{ borderColor: '#38bdf8' }}
+              style={{ borderColor: '#38bdf8', color: '#38bdf8' }}
             >
               💨 Wind Vectors
             </button>
@@ -177,6 +177,7 @@ export default function App() {
 
         {/* Legend */}
         <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.73rem', display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ color: '#c084fc' }}>● Dual-Verified</span>
           <span style={{ color: '#ef4444' }}>● VIIRS (375m)</span>
           <span style={{ color: '#f97316' }}>● MODIS (1km)</span>
           <span style={{ color: '#38bdf8' }}>💨 Wind Spread</span>
@@ -184,7 +185,7 @@ export default function App() {
       </div>
 
       {/* Map Viewport */}
-      <MapContainer id="map" center={[26.8, 30.8]} zoom={6} style={{ width: '100%', height: '100%' }}>
+      <MapContainer id="map" center={[20.0, 15.0]} zoom={3} style={{ width: '100%', height: '100%' }}>
         <TileLayer
           key={currentBasemap}
           attribution={BASEMAPS[currentBasemap].attribution}
@@ -197,7 +198,7 @@ export default function App() {
           const p = f.properties || {};
           const color = getColor(p);
           const frp = getFrp(p);
-          const radius = Math.min(Math.max(frp / 10, 4), 16);
+          const radius = Math.min(Math.max(frp / 15, 4), 16);
 
           return (
             <CircleMarker
@@ -208,18 +209,19 @@ export default function App() {
                 color: color,
                 fillColor: color,
                 fillOpacity: currentBasemap === 'satellite' ? 0.9 : 0.75,
-                weight: p.spread_heading_deg !== null ? 2.5 : 1
+                weight: p.is_multi_sensor ? 2.5 : 1
               }}
             >
               <Popup>
                 <div style={{ color: '#0f172a', fontFamily: 'sans-serif', fontSize: '0.85rem', lineHeight: '1.4' }}>
                   <div style={{ fontWeight: 'bold', fontSize: '1rem', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '6px' }}>
-                    🔥 Active Fire Hotspot
+                    {p.is_multi_sensor ? '🟣 Dual-Sensor Verified Fire' : '🔥 Active Fire Hotspot'}
                   </div>
-                  <div><strong>Instrument:</strong> {p.instrument || (p.sensors ? p.sensors.join(' + ') : 'Satellite')} ({p.source_resolution_m || 375}m)</div>
-                  <div><strong>Satellite:</strong> {p.satellite || 'NASA Constellation'}</div>
-                  <div><strong>Fire Radiative Power:</strong> <span style={{ color: '#dc2626', fontWeight: 'bold' }}>{frp.toFixed(2)} MW</span></div>
-                  <div><strong>Confidence:</strong> {p.confidence || 'Nominal'}</div>
+                  <div><strong>Sensors:</strong> {p.sensors ? p.sensors.join(' + ') : (p.instrument || 'Satellite')}</div>
+                  <div><strong>Resolution:</strong> {p.effective_resolution_m || 375}m {p.is_multi_sensor ? '(Refined to 375m)' : ''}</div>
+                  <div><strong>Total FRP:</strong> <span style={{ color: '#dc2626', fontWeight: 'bold' }}>{frp.toFixed(2)} MW</span></div>
+                  <div><strong>Detections Merged:</strong> {p.detection_count || 1} (MODIS: {p.modis_detections || 0}, VIIRS: {p.viirs_detections || 0})</div>
+                  <div><strong>Confidence:</strong> {p.confidence_score ? `${(p.confidence_score * 100).toFixed(0)}% (Bayesian Fusion)` : (p.confidence || 'Nominal')}</div>
                   
                   {p.spread_heading_deg !== null && (
                     <div style={{ marginTop: '6px', padding: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '4px' }}>
@@ -237,7 +239,7 @@ export default function App() {
                   )}
 
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '6px' }}>
-                    Acquired: {p.acq_datetime}
+                    Acquired: {p.earliest_detection || p.acq_datetime}
                   </div>
                 </div>
               </Popup>
