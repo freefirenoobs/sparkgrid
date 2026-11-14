@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SparkGrid — Official 7-Slide NASA Space Apps 2026 Presentation Deck</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #070b14;
+        --card: #0e1628;
+        --border: rgba(56, 189, 248, 0.35);
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #04070e;
+        color: #f8fafc;
+        font-family: 'Inter', sans-serif;
+      }
+      .top-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(7, 11, 20, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        padding: 12px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 13px;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #ff2a5f, #ff6b00);
+        color: #fff;
+      }
+      .btn-secondary {
+        background: #1e293b;
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.4);
+      }
+      .deck-container {
+        max-width: 1120px;
+        margin: 24px auto;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+        padding: 0 16px 48px 16px;
+      }
+      .slide {
+        width: 100%;
+        min-height: 600px;
+        background: radial-gradient(circle at top right, rgba(147,51,234,0.18), transparent 45%),
+                    radial-gradient(circle at bottom left, rgba(255,42,95,0.14), transparent 45%),
+                    linear-gradient(145deg, #0b1324 0%, #070b14 100%);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 20px;
+        padding: 42px 48px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+        position: relative;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
+      }
+      .slide-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .badge {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: rgba(2, 132, 199, 0.22);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.4);
+      }
+      .brand-mini {
+        font-size: 13px;
+        font-weight: 800;
+        color: #94a3b8;
+      }
+      .slide h1 {
+        font-size: 34px;
+        font-weight: 900;
+        margin: 14px 0 6px 0;
+        letter-spacing: -0.6px;
+        color: #ffffff;
+      }
+      .slide h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #38bdf8;
+        margin: 0 0 22px 0;
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1.65fr 1fr;
+        gap: 24px;
+        flex: 1;
+        align-items: stretch;
+      }
+      .card {
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 14px;
+        padding: 22px 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 14px;
+      }
+      .kpi-box {
+        background: linear-gradient(145deg, rgba(255,42,95,0.16), rgba(147,51,234,0.22));
+        border: 1px solid rgba(168, 85, 247, 0.45);
+        border-radius: 14px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+      .kpi-num {
+        font-size: 52px;
+        font-weight: 900;
+        color: #fff;
+        line-height: 1;
+      }
+      .kpi-lbl {
+        font-size: 13px;
+        color: #e2e8f0;
+        margin-top: 10px;
+        line-height: 1.45;
+      }
+      .bullet {
+        font-size: 15px;
+        line-height: 1.55;
+        color: #e2e8f0;
+      }
+      .bullet strong {
+        color: #fff;
+      }
+      .slide-footer {
+        margin-top: 22px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(148, 163, 184, 0.16);
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #94a3b8;
+      }
+      code {
+        font-family: 'JetBrains Mono', monospace;
+        background: rgba(2, 132, 199, 0.2);
+        color: #7dd3fc;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      @page {
+        size: 16in 9in;
+        margin: 0;
+      }
+      @media print {
+        .top-toolbar {
+          display: none !important;
+        }
+        .deck-container {
+          max-width: 100%;
+          margin: 0;
+          padding: 0;
+          gap: 0;
+        }
+        .slide {
+          width: 100vw;
+          height: 100vh;
+          border-radius: 0;
+          border: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-toolbar">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:20px;">🔥</span>
+        <strong>SPARKGRID — Official 7-Slide NASA Space Apps Submission Deck</strong>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <a href="/SparkGrid_NASA_SpaceApps_2026_7_Slides.pptx" download class="btn btn-secondary">
+          📥 Download PowerPoint (.PPTX)
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+          🖨️ Save as 7-Page PDF (Ctrl+P)
+        </button>
+        <a href="/" class="btn btn-secondary">🗺️ Back to Live Map HUD</a>
+      </div>
+    </div>
+
+    <div class="deck-container">
+      <!-- SLIDE 1 -->
+      <section class="slide">
+        <div>
+          <div class="slide-header">
+            <span class="badge">Slide 1 / 7 • Title & Mission Overview</span>
+            <span class="brand-mini">🔥 SPARKGRID • NASA SPACE APPS CAIRO 2026</span>
+          </div>
+          <h1>SPARKGRID: Harmonizing the Planet’s Fire Sentinels</h1>
+          <h2>Challenge: Harmonization of MODIS and VIIRS Active Fire Hot Spots</h2>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="bullet">
+              🔥 <strong>The Global Emergency Bottleneck:</strong> First responders and wildfire command centers rely on NASA’s <b>MODIS (1 km)</b> and <b>VIIRS (375 m)</b> constellations—but plotting both raw streams creates massive duplicate alarms, conflicting fire perimeters, and industrial flare false positives.
+            </div>
+            <div class="bullet">
+              🛰️ <strong>The SparkGrid Solution:</strong> An automated 8-stage <b>Spatiotemporal Harmonization Engine</b> + <b>God’s Eye Voice AI Tactical Map HUD</b> deployed live at <code>https://sparkgrid.masarat.app</code>.
+            </div>
+            <div class="bullet">
+              🎯 <strong>Proven Operational Impact:</strong> Compresses <b>27,672 raw planetary detections</b> down to <b>11,505 unified wildfire clusters (2.45× deduplication)</b>, isolates <b>672 Dual-Sensor Verified fires</b>, and models real-time wind-driven spread vectors across <b>10,106 clusters</b>.
+            </div>
+          </div>
+
+          <div class="kpi-box">
+            <div class="kpi-num">2.45×</div>
+            <div class="kpi-lbl">
+              <strong>Telemetry Redundancy Reduction</strong><br />
+              27,672 Raw Detections ➔ 11,505 Unified Clusters<br /><br />
+              <span style="color:#38bdf8; font-weight:700;">Live App: sparkgrid.masarat.app</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>Team SparkGrid • NASA Space Apps Challenge Cairo 2026</span>
+          <span>Live Platform: https://sparkgrid.masarat.app | Repo: github.com/freefirenoobs/sparkgrid</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 2 -->
+      <section class="slide">
+        <div>
+          <div class="slide-header">
+            <span class="badge">Slide 2 / 7 • The Remote Sensing Dilemma</span>
+            <span class="brand-mini">🔥 SPARKGRID • SENSOR PHYSICS</span>
+          </div>
+          <h1>Why Raw MODIS (1km) & VIIRS (375m) Feeds Clash</h1>
+          <h2>Spatial Granularity, Point-Spread Broadening & Orbital Overpass Skew</h2>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="bullet">
+              🟠 <strong>MODIS (Terra & Aqua Satellites):</strong> Scans at <code>1000m × 1000m</code> nadir resolution (<b>1.00 km² footprint area</b>) using 3.96 µm Channels 21/22. Outputs continuous <code>0–100%</code> confidence at ~10:30 AM and ~1:30 PM local overpasses.
+            </div>
+            <div class="bullet">
+              🔴 <strong>VIIRS (Suomi-NPP, NOAA-20 & NOAA-21):</strong> Scans at <code>375m × 375m</code> I-Band I4/I5 resolution (<b>0.14 km² footprint area — 7.1× tighter!</b>). Outputs categorical <code>low / nominal / high</code> confidence with minimal scan-edge distortion.
+            </div>
+            <div class="bullet">
+              ⚠️ <strong>The Duplication Hazard:</strong> A single 1 km² wildfire triggers <b>1 large MODIS pixel + up to 7 overlapping VIIRS pixels</b>. Summing raw feeds overestimates burn area and confuses aerial tanker dispatchers.
+            </div>
+          </div>
+
+          <div class="kpi-box">
+            <div class="kpi-num">7.1×</div>
+            <div class="kpi-lbl">
+              <strong>Sharper Area Localization</strong><br />
+              VIIRS 375m (0.14 km²) nested inside MODIS 1000m (1.00 km²) pinpoints the exact flaming front
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>Planck Blackbody & Wien Displacement Mid-IR Radiometry (3.74 µm vs 3.96 µm)</span>
+          <span>Slide 2 of 7</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 3 -->
+      <section class="slide">
+        <div>
+          <div class="slide-header">
+            <span class="badge">Slide 3 / 7 • Algorithmic Formulation</span>
+            <span class="brand-mini">🔥 SPARKGRID • HARMONIZATION ENGINE</span>
+          </div>
+          <h1>The 8-Stage Spatiotemporal Harmonization Pipeline</h1>
+          <h2>Spherical Haversine DBSCAN + FRP-Weighted Centroids + Bayesian Fusion</h2>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="bullet">
+              1️⃣ <strong>Unified Confidence Mapping:</strong> Normalizes MODIS integer confidence <code>c = conf / 100</code> and VIIRS categorical tiers (<code>low=0.30, nominal=0.70, high=0.95</code>) into a shared Bayesian space <code>[0.0, 1.0]</code>.
+            </div>
+            <div class="bullet">
+              2️⃣ <strong>Great-Circle Haversine DBSCAN:</strong> Groups detections on the spherical Earth using <code>ε = 1.5 km</code> (<code>0.0002354 rad</code>) and orbital time window <code>|Δt| ≤ 120 minutes</code>.
+            </div>
+            <div class="bullet">
+              3️⃣ <strong>FRP-Weighted Centroids & Bayesian Reinforcement:</strong> Anchors cluster coordinates to peak Fire Radiative Power <code>Center = ∑(x_i · FRP_i) / ∑FRP_i</code> and fuses multi-sensor probability via <code>C_fused = 1 − ∏(1 − c_i)</code>.
+            </div>
+          </div>
+
+          <div class="kpi-box">
+            <div class="kpi-num">672</div>
+            <div class="kpi-lbl">
+              <strong>Dual-Sensor Verified Wildfires</strong><br />
+              Confirmed simultaneously by both MODIS and VIIRS with &gt;95% fused Bayesian confidence
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>Engine Pipeline: /data-pipeline/harmonize.py • Sub-30s Global Execution</span>
+          <span>Slide 3 of 7</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 4 -->
+      <section class="slide">
+        <div>
+          <div class="slide-header">
+            <span class="badge">Slide 4 / 7 • Meteorological & Flare Intelligence</span>
+            <span class="brand-mini">🔥 SPARKGRID • TACTICAL ENRICHMENT</span>
+          </div>
+          <h1>Wind-Driven Spread Vectors & Industrial Flare Masking</h1>
+          <h2>Coupling NASA Thermal Anomalies with Open-Meteo 10m Atmospheric Models</h2>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="bullet">
+              🏹 <strong>Fire-Spread Direction Arrows (<code>spread_heading_deg</code>):</strong> Queries Open-Meteo in 50-coordinate batches to compute downwind flame propagation <code>θ_spread = (θ_wind + 180°) mod 360°</code>, rendered as rotated SVG azimuth arrows.
+            </div>
+            <div class="bullet">
+              🌪️ <strong>Wind Speed Heat Layer (<code>wind_speed_mps</code>):</strong> Dynamically scales hotspot marker radius and 4-tier thermal color intensity (<code>&lt;2.5 m/s</code> Cyan ➔ <code>&gt;8.0 m/s</code> Extreme Crimson).
+            </div>
+            <div class="bullet">
+              🏭 <strong>Industrial Gas Flare Filter (<code>is_industrial</code>):</strong> Automatically flags <b>175 persistent petroleum/refinery flares</b> across the Gulf of Suez, Western Desert, Basra, and Niger Delta with 1-click Highlight / Gray-Out / Hide controls.
+            </div>
+          </div>
+
+          <div class="kpi-box">
+            <div class="kpi-num">10,106</div>
+            <div class="kpi-lbl">
+              <strong>Wind-Enriched Active Clusters</strong><br />
+              Plus 175 Stationary Oil/Gas Flares Masked to Eliminate False Emergency Dispatches
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>API Endpoint: GET /api/hotspots?limit=500&amp;has_wind=true</span>
+          <span>Slide 4 of 7</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 5 -->
+      <section class="slide">
+        <div>
+          <div class="slide-header">
+            <span class="badge">Slide 5 / 7 • God's Eye AI & Responsive HUD</span>
+            <span class="brand-mini">🔥 SPARKGRID • USER EXPERIENCE</span>
+          </div>
+          <h1>God’s Eye Voice AI Commander & Smartphone-Ready HUD</h1>
+          <h2>Speak to the Map: Voice-Guided Camera Flights + Instant Responder Briefings</h2>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="bullet">
+              👁️ <strong>God’s Eye Voice & Camera AI:</strong> Speak into the mic or click a prompt (e.g., <i>"Take me to Egypt 1km vs 375m"</i> or <i>"Fly to the biggest megafire"</i>)—the AI flies the Leaflet camera, switches satellite layers, and narrates the scientific telemetry out loud!
+            </div>
+            <div class="bullet">
+              ⚡ <strong>Automated Responder Action Plans:</strong> Clicking <b>"⚡ AI Voice Action Plan"</b> on any cluster invokes <code>POST /api/hotspots/{id}/briefing</code> to calculate downwind evacuation bearings, spread velocity in km/h, and containment buffers.
+            </div>
+            <div class="bullet">
+              📱 <strong>Desktop + Smartphone Native Design:</strong> Features a 4-tab Mission Control Sidebar on desktop and a touch-friendly Slide-Up Bottom Sheet + Floating Quick Pills on smartphones.
+            </div>
+          </div>
+
+          <div class="kpi-box">
+            <div class="kpi-num">🎙️ AI</div>
+            <div class="kpi-lbl">
+              <strong>Voice-Controlled Satellite Tour</strong><br />
+              Web Speech Recognition + Speech Synthesis + Automated 4-Stop Planetary Flight
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>Built with React 18, React-Leaflet, FastAPI &amp; Web Speech API</span>
+          <span>Slide 5 of 7</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 6 -->
+      <section class="slide">
+        <div>
+          <div class="slide-header">
+            <span class="badge">Slide 6 / 7 • Empirical Benchmarks & Egypt Case Study</span>
+            <span class="brand-mini">🔥 SPARKGRID • VALIDATION</span>
+          </div>
+          <h1>Planetary Benchmark & Egypt Regional Case Study</h1>
+          <h2>Real-World Verification in the Nile Valley (Beni Suef) & Gulf of Suez</h2>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="bullet">
+              🇪🇬 <strong>Egypt Nile Valley Case Study (<code>[29.017°N, 31.204°E]</code>):</strong> Side-by-side comparison of MODIS 1000m (<code>SG-EG-0003</code>) and VIIRS 375m (<code>SG-EG-0010</code>, <code>SG-EG-0011</code>) agricultural burns in Beni Suef, visually proving why VIIRS footprints are 7.1× tighter.
+            </div>
+            <div class="bullet">
+              🏭 <strong>Gulf of Suez & Sinai Validation (<code>[29.691°N, 32.322°E]</code>):</strong> Separates Ain Sokhna petroleum flaring anomalies from Nile Delta vegetation fires across <b>45 featured Egypt clusters</b>.
+            </div>
+            <div class="bullet">
+              ⚡ <strong>Global Radiative Energy Budget:</strong> Tracks <b>296,892.71 MW</b> of cumulative Fire Radiative Power globally (Mean: 25.81 MW, Peak cluster: 3,635.08 MW) with 1-click GeoJSON &amp; CSV export.
+            </div>
+          </div>
+
+          <div class="kpi-box">
+            <div class="kpi-num">296.9 GW</div>
+            <div class="kpi-lbl">
+              <strong>Total Fire Radiative Power</strong><br />
+              45 Featured Egypt Clusters + 11,460 Global Harmonized Clusters
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>Data Sources: NASA FIRMS MODIS C6.1 + VIIRS 375m S-NPP/NOAA-20/21 + Open-Meteo</span>
+          <span>Slide 6 of 7</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 7 -->
+      <section class="slide">
+        <div>
+          <div class="slide-header">
+            <span class="badge">Slide 7 / 7 • Cloud Architecture & Future Roadmap</span>
+            <span class="brand-mini">🔥 SPARKGRID • OPEN SOURCE</span>
+          </div>
+          <h1>Production Cloud Topology & Next-Gen Roadmap</h1>
+          <h2>100% Open Source, Automated CI/CD & Ready for First Responders Today</h2>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="bullet">
+              ☁️ <strong>Zero-Downtime Cloud Infrastructure:</strong> Deployed across dual Azure Ubuntu VMs (<code>Jarvis-Cloud</code> Gateway + <code>RemoteDesktop-VM</code> Compute) secured by Cloudflare Zero Trust SSL Tunnels and 2-minute GitHub auto-deploy cron (<code>deploy.sh</code>).
+            </div>
+            <div class="bullet">
+              🚀 <strong>Phase 2 Operational Roadmap:</strong> Direct NASA Earthdata LANCE WebSocket ingestion, Rothermel elliptical fire-perimeter polygon propagation, and automated WhatsApp/SMS civil defense alerts.
+            </div>
+            <div class="bullet">
+              🔗 <strong>Verify Live Right Now:</strong><br />
+              • <b>Web &amp; Mobile HUD:</b> <code>https://sparkgrid.masarat.app</code><br />
+              • <b>FastAPI Swagger Docs:</b> <code>https://sparkgrid-api.masarat.app/docs</code><br />
+              • <b>GitHub Monorepo:</b> <code>https://github.com/freefirenoobs/sparkgrid</code>
+            </div>
+          </div>
+
+          <div class="kpi-box">
+            <div class="kpi-num">LIVE</div>
+            <div class="kpi-lbl">
+              <strong>sparkgrid.masarat.app</strong><br />
+              Empowering First Responders to Fight Fires—Not Conflicting Satellite Data
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>Thank You Judges! • Team SparkGrid — NASA Space Apps Cairo 2026</span>
+          <span>Slide 7 of 7</span>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

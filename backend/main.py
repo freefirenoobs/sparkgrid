@@ -12,7 +12,7 @@ from pydantic import BaseModel
 app = FastAPI(
     title="SparkGrid API - NASA MODIS & VIIRS Harmonization Engine",
     description="Spatio-Temporal Harmonization of Satellite Active Fire Hotspots (NASA Space Apps Cairo 2026)",
-    version="2.1.0"
+    version="2.2.0"
 )
 
 app.add_middleware(
@@ -74,7 +74,7 @@ def health():
         "status": "healthy",
         "dataset_available": data_exists,
         "dataset_path": GEOJSON_PATH,
-        "version": "2.1.0"
+        "version": "2.2.0"
     }
 
 
@@ -252,52 +252,189 @@ def ai_chat(req: ChatRequest):
     stats = get_stats()
     sel = req.selected_cluster
 
-    if sel and ("selected" in msg_low or "this fire" in msg_low or "brief" in msg_low or "action" in msg_low or "analyze" in msg_low):
+    # God's Eye View Navigation & Voice Explanation Engine
+    if any(k in msg_low for k in ["egypt", "nile", "beni suef", "cairo", "delta"]):
+        camera_action = {
+            "center": [29.0172, 31.2038],
+            "zoom": 14,
+            "basemap": "satellite",
+            "showFootprints": True,
+            "showSpreadArrows": True,
+            "showWindHeat": False,
+            "industrialMode": "HIGHLIGHT",
+            "cluster_id": "SG-EG-0010",
+            "location_title": "🇪🇬 Beni Suef, Nile Valley, Egypt (Zoom 14)"
+        }
+        speech = (
+            "Flying to the Nile Valley in Beni Suef, Egypt at Zoom 14. "
+            "Notice how the large orange 1,000 meter MODIS square overlaps with the tight 375 meter VIIRS squares right beside the agricultural fields. "
+            "SparkGrid fuses these overlapping passes into a single Dual-Verified cluster with 98 percent confidence, showing a southward fire spread driven by 4.6 meter per second winds."
+        )
+        reply = (
+            "👁️ **God's Eye Navigation ➔ Beni Suef, Nile Valley, Egypt (`[29.0172°N, 31.2038°E]`, Zoom 14)**\n\n"
+            "• **What You Are Seeing:** We switched to high-resolution **Satellite Imagery** and enabled **1km vs 375m Footprint Polygons**.\n"
+            "• **MODIS (`SG-EG-0003`):** The large orange square ($1000\\text{ m} \\times 1000\\text{ m} = 1.0\\text{ km}^2$) averages thermal energy across the entire square kilometer.\n"
+            "• **VIIRS (`SG-EG-0010` & `SG-EG-0011`):** The tight crimson and violet squares ($375\\text{ m} \\times 375\\text{ m} = 0.14\\text{ km}^2$) pinpoint the exact burning field **7.1× more tightly**, with directional arrows pointing toward $150^\\circ$ SSE!"
+        )
+        return {"reply": reply, "speech": speech, "camera_action": camera_action}
+
+    if any(k in msg_low for k in ["suez", "sinai", "sokhna", "industrial", "flare", "oil", "refinery", "basra"]):
+        is_basra = "basra" in msg_low or "persian" in msg_low or "iraq" in msg_low
+        center = [30.70, 47.55] if is_basra else [29.6915, 32.3225]
+        zoom = 10 if is_basra else 14
+        loc_title = "🛢️ Basra Oil Fields, Persian Gulf" if is_basra else "🏭 Gulf of Suez / Ain Sokhna, Egypt"
+        camera_action = {
+            "center": center,
+            "zoom": zoom,
+            "basemap": "satellite",
+            "showFootprints": True,
+            "showSpreadArrows": True,
+            "showWindHeat": False,
+            "industrialMode": "HIGHLIGHT",
+            "cluster_id": "SG-EG-0002" if not is_basra else None,
+            "location_title": loc_title
+        }
+        speech = (
+            f"Navigating to {loc_title}. "
+            f"Satellites detect intense infrared radiation from stationary oil and gas flares, often causing false wildfire alarms. "
+            f"SparkGrid flags {stats['industrial_flares']} industrial flares globally in hazard yellow, and lets emergency dispatchers gray them out or hide them with one click."
+        )
+        reply = (
+            f"👁️ **God's Eye Navigation ➔ {loc_title} (Zoom {zoom})**\n\n"
+            f"• **Industrial Thermal Noise Solved:** Stationary petroleum flares emit $300\\text{{ K}} - 400\\text{{ K}}$ mid-infrared spikes that raw satellite feeds misclassify as wildfires.\n"
+            f"• **SparkGrid Basin Masking:** We automatically tag **{stats['industrial_flares']} persistent oil/gas flares** (`is_industrial = true`) across the Gulf of Suez, Western Desert, Basra, and Niger Delta.\n"
+            "• **Try It:** Toggle **'🏭 Gray Out Industrial Flares'** in the HUD to mute these yellow markers so real wildfires stand out immediately!"
+        )
+        return {"reply": reply, "speech": speech, "camera_action": camera_action}
+
+    if any(k in msg_low for k in ["megafire", "biggest", "largest", "dual", "multi-sensor", "africa", "chad", "sudan", "2006"]):
+        camera_action = {
+            "center": [12.315, 20.492],
+            "zoom": 13,
+            "basemap": "dark",
+            "showFootprints": True,
+            "showSpreadArrows": True,
+            "showWindHeat": False,
+            "industrialMode": "HIGHLIGHT",
+            "location_title": "🔥 2,006 MW Dual-Sensor Verified Megafire (Zoom 13)"
+        }
+        speech = (
+            "Taking you to Central Africa at Zoom 13 to inspect a massive 2,006 Megawatt Dual-Sensor Verified wildfire. "
+            "Here, a dashed 1,000 meter MODIS square wraps around a nested 375 meter violet VIIRS core, confirming an active savanna fire front advancing northward at 359 degrees."
+        )
+        reply = (
+            "👁️ **God's Eye Navigation ➔ 2,006 MW Dual-Verified Megafire (`[12.315°N, 20.492°E]`, Zoom 13)**\n\n"
+            "• **Nested Multi-Sensor Verification:** Notice the **outer dashed 1000m MODIS square** containing the **inner 375m violet VIIRS core** (`MODIS+VIIRS`).\n"
+            "• **Why It Matters:** When both NASA's Terra/Aqua (MODIS) and Suomi-NPP/NOAA-20 (VIIRS) detect the same blaze within a 120-minute orbital window, Bayesian fusion elevates confidence above **98%** and anchors the centroid to the highest radiative power ($2,006\\text{ MW}$)."
+        )
+        return {"reply": reply, "speech": speech, "camera_action": camera_action}
+
+    if any(k in msg_low for k in ["wind", "heat", "speed", "storm", "arrow", "spread", "fast"]):
+        camera_action = {
+            "center": [12.315, 20.492],
+            "zoom": 7,
+            "basemap": "dark",
+            "showFootprints": False,
+            "showSpreadArrows": True,
+            "showWindHeat": True,
+            "industrialMode": "GRAY_OUT",
+            "location_title": "🌪️ Wind Speed Thermal Risk & Spread Vectors (Zoom 7)"
+        }
+        speech = (
+            "Activating the Wind Speed Heat Layer and Fire-Spread Direction Arrows across the regional burn belt. "
+            "Hotspot size and thermal color now reflect live 10-meter wind velocity from Open-Meteo, while rotated arrows point directly along the downwind fire spread azimuth."
+        )
+        reply = (
+            f"👁️ **God's Eye Navigation ➔ Wind Speed Heat Layer Activated ({stats['with_wind_vectors']:,} Wind-Enriched Clusters)**\n\n"
+            "• **Dynamic Thermal Sizing (`wind_speed_mps`):** Marker radius and halo glow now scale with wind speed (`<2.5 m/s` Low Cyan ➔ `2.5–5 m/s` Moderate Yellow ➔ `5–8 m/s` High Orange ➔ `>8 m/s` Extreme Crimson).\n"
+            "• **Spread Azimuth (`spread_heading_deg`):** Every arrow is rotated to $\\theta_{\\text{spread}} = (\\theta_{\\text{wind}} + 180^\\circ) \\pmod{360^\\circ}$, showing first responders which settlements lie directly downwind."
+        )
+        return {"reply": reply, "speech": speech, "camera_action": camera_action}
+
+    if any(k in msg_low for k in ["1km", "375m", "footprint", "modis", "viirs", "square", "polygon", "resolution"]):
+        camera_action = {
+            "center": [29.0172, 31.2038],
+            "zoom": 14,
+            "basemap": "satellite",
+            "showFootprints": True,
+            "showSpreadArrows": True,
+            "showWindHeat": False,
+            "industrialMode": "HIGHLIGHT",
+            "cluster_id": "SG-EG-0010",
+            "location_title": "📐 1000m MODIS vs 375m VIIRS Footprint Comparison (Zoom 14)"
+        }
+        speech = (
+            "Zooming in to level 14 to compare sensor footprints at true ground scale. "
+            "A single 1,000 meter by 1,000 meter MODIS pixel covers 1.0 square kilometer, whereas a 375 meter by 375 meter VIIRS pixel covers just 0.14 square kilometers—making VIIRS 7.1 times sharper in area."
+        )
+        reply = (
+            "👁️ **God's Eye View ➔ 1000m MODIS vs 375m VIIRS Pixel Footprints (`Zoom 14`)**\n\n"
+            "• **MODIS (Terra/Aqua):** $1000\\text{ m} \\times 1000\\text{ m} = 1.00\\text{ km}^2$ (Orange squares).\n"
+            "• **VIIRS (S-NPP/NOAA-20/21):** $375\\text{ m} \\times 375\\text{ m} = 0.14\\text{ km}^2$ (Crimson squares — **7.1× tighter area**).\n"
+            f"• **Harmonization Result:** Across our global run, Spatiotemporal Haversine DBSCAN ($\epsilon=1.5\\text{{ km}}$) compressed **27,672 raw points into {stats['total_clusters']:,} unified clusters (2.45× deduplication)** and verified **{stats['multi_sensor_verified_clusters']} Dual-Sensor fires**."
+        )
+        return {"reply": reply, "speech": speech, "camera_action": camera_action}
+
+    if any(k in msg_low for k in ["world", "global", "planet", "overview", "reset", "all"]):
+        camera_action = {
+            "center": [22.0, 25.0],
+            "zoom": 3,
+            "basemap": "dark",
+            "showFootprints": False,
+            "showSpreadArrows": True,
+            "showWindHeat": False,
+            "industrialMode": "HIGHLIGHT",
+            "location_title": "🌍 Global Planetary View (11,505 Harmonized Clusters)"
+        }
+        speech = (
+            f"Pulling back to Planetary God's Eye View at Zoom 3. "
+            f"SparkGrid is currently tracking {stats['total_clusters']} harmonized wildfire clusters worldwide, compressed from 27,672 raw NASA satellite detections—a 2.45 times reduction in emergency dispatch clutter."
+        )
+        reply = (
+            f"👁️ **God's Eye Navigation ➔ Planetary Overview (`Zoom 3`)**\n\n"
+            f"• **Total Harmonized Clusters:** `{stats['total_clusters']:,}` (from `27,672` raw detections = **2.45× compression**)\n"
+            f"• **Dual-Sensor Verified (`MODIS+VIIRS`):** `{stats['multi_sensor_verified_clusters']}`\n"
+            f"• **Wind Vector Coverage:** `{stats['with_wind_vectors']:,}` clusters enriched via Open-Meteo\n"
+            f"• **Industrial Flares Masked:** `{stats['industrial_flares']}`\n"
+            f"• **Total Radiative Power:** `{stats['total_frp_mw']:,} MW`"
+        )
+        return {"reply": reply, "speech": speech, "camera_action": camera_action}
+
+    if sel:
         cid = sel.get("cluster_id", "SG-SELECTED")
         try:
             b = generate_cluster_briefing(cid)
-            return {"reply": b["summary"], "briefing": b}
+            lat = float(sel.get("latitude", 29.0172))
+            lon = float(sel.get("longitude", 31.2038))
+            camera_action = {
+                "center": [lat, lon],
+                "zoom": 14,
+                "basemap": "satellite",
+                "showFootprints": True,
+                "showSpreadArrows": True,
+                "cluster_id": cid,
+                "location_title": f"🎯 Target Cluster {cid} ({lat:.3f}°N, {lon:.3f}°E)"
+            }
+            speech = f"Focusing on cluster {cid}. {b['action_plan'][0]} {b['action_plan'][1]}"
+            return {"reply": b["summary"], "speech": speech, "briefing": b, "camera_action": camera_action}
         except Exception:
             pass
 
-    if "1km" in msg_low or "375m" in msg_low or "footprint" in msg_low or "modis" in msg_low or "viirs" in msg_low:
-        reply = (
-            "📐 **MODIS (1000m) vs VIIRS (375m) Harmonization Explained:**\n"
-            "• **MODIS (Terra/Aqua):** Captures $1000\\text{ m} \\times 1000\\text{ m}$ ($1.0\\text{ km}^2$) pixels. Great for broad regional coverage, but a small fire heats the entire $1\\text{ km}^2$ box.\n"
-            "• **VIIRS (Suomi-NPP/NOAA-20/21):** Captures $375\\text{ m} \\times 375\\text{ m}$ ($0.14\\text{ km}^2$) pixels—**7.1× tighter in area**.\n"
-            f"• **SparkGrid Fusion:** Using Haversine DBSCAN ($\\epsilon=1.5\\text{{ km}}$, $\\Delta t \\le 120\\text{{ min}}$), we compressed **27,672 raw detections into {stats['total_clusters']:,} unified clusters (2.45× compression)** and isolated **{stats['multi_sensor_verified_clusters']} Dual-Verified (MODIS+VIIRS)** fires where the 375m VIIRS core pinpoints the exact flame front inside the 1km MODIS box!"
-        )
-    elif "egypt" in msg_low or "suez" in msg_low or "nile" in msg_low or "cairo" in msg_low:
-        reply = (
-            f"🇪🇬 **Egypt & Red Sea Regional Telemetry ({stats['egypt_clusters']} Active Clusters):**\n"
-            "• **Nile Valley & Delta (Beni Suef / Minya / Delta):** Features side-by-side MODIS 1000m (`SG-EG-0003`) and VIIRS 375m (`SG-EG-0010`, `SG-EG-0011`) detections—tap the **'🇪🇬 Egypt 1km vs 375m'** preset button to inspect them at Zoom 14.\n"
-            "• **Gulf of Suez & Sinai (`[29.69°N, 32.32°E]`):** Contains persistent offshore/onshore oil & gas flares automatically flagged with `is_industrial = true` so emergency dispatchers don't mistake petroleum flaring for agricultural fires."
-        )
-    elif "wind" in msg_low or "spread" in msg_low or "arrow" in msg_low or "heat" in msg_low:
-        reply = (
-            f"🌪️ **Wind-Driven Fire Spread Modeling ({stats['with_wind_vectors']:,} Enriched Clusters):**\n"
-            "• Every cluster is enriched with live 10m wind velocity (`wind_speed_mps`) and direction (`wind_dir_deg`) from Open-Meteo.\n"
-            "• **Spread Heading (`spread_heading_deg`):** Computed as $(\\theta_{\\text{wind}} + 180^\\circ) \\pmod{360^\\circ}$, rendered as rotated directional arrows on the map.\n"
-            "• Turn on the **'🌪️ Wind Speed Heat Layer'** in the Layers panel to scale marker radius and color intensity by wind speed (`<2.5 m/s` Low Cyan → `>8 m/s` Extreme Crimson)."
-        )
-    elif "industrial" in msg_low or "flare" in msg_low or "oil" in msg_low:
-        reply = (
-            f"🏭 **Industrial Gas Flare Masking ({stats['industrial_flares']} Flagged Globally):**\n"
-            "• Stationary hydrocarbon flares in the Gulf of Suez, Western Desert, Basra/Persian Gulf, Niger Delta, and Permian Basin emit intense infrared radiation that raw satellite feeds flag as fires.\n"
-            "• SparkGrid identifies these via spatial basin masks (`is_industrial: true`) and gives you a 3-way control in the HUD: **Highlight (Hazard Yellow)**, **Gray Out (Muted)**, or **Hide**."
-        )
-    else:
-        reply = (
-            f"🛰️ **SparkGrid Live Mission Status (NASA Space Apps Cairo 2026):**\n"
-            f"• **Unified Clusters:** `{stats['total_clusters']:,}` (from `27,672` raw detections = **2.45× deduplication**)\n"
-            f"• **Dual-Sensor Verified (`MODIS+VIIRS`):** `{stats['multi_sensor_verified_clusters']}` high-confidence fires\n"
-            f"• **Wind & Spread Vectors:** `{stats['with_wind_vectors']:,}` hotspots enriched\n"
-            f"• **Industrial Flares Filtered:** `{stats['industrial_flares']}` oil/gas flares\n"
-            f"• **Total Radiative Power:** `{stats['total_frp_mw']:,} MW` (Peak cluster: `{stats['max_frp_mw']} MW`)\n\n"
-            "💡 *Tip: Tap any hotspot on the map and click **'⚡ Generate AI Action Plan'** for an instant firefighter briefing, or ask me about **Egypt hotspots**, **1km vs 375m footprints**, **wind spread arrows**, or **industrial flares**!*"
-        )
-
-    return {"reply": reply}
+    speech = (
+        f"SparkGrid God's Eye AI is online. We are tracking {stats['total_clusters']} harmonized clusters and {stats['multi_sensor_verified_clusters']} dual-sensor verified wildfires. "
+        "Ask me to take you to Egypt, the Gulf of Suez flares, the 2,006 Megawatt megafire, or ask me to activate the Wind Speed Heat Layer!"
+    )
+    reply = (
+        f"👁️ **SparkGrid God's Eye AI Commander Online:**\n"
+        f"• **Unified Clusters:** `{stats['total_clusters']:,}` (**2.45× deduplication** from 27,672 raw points)\n"
+        f"• **Dual-Sensor Verified (`MODIS+VIIRS`):** `{stats['multi_sensor_verified_clusters']}`\n\n"
+        "🎙️ **Try saying or clicking:**\n"
+        "• *\"Take me to Egypt 1km vs 375m footprints\"*\n"
+        "• *\"Show me the Gulf of Suez industrial flares\"*\n"
+        "• *\"Fly to the biggest Dual-Sensor Megafire\"*\n"
+        "• *\"Activate the Wind Speed Heat Layer\"*"
+    )
+    return {"reply": reply, "speech": speech}
 
 
 @app.get("/api/export/geojson")

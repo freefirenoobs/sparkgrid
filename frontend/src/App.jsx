@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -40,7 +40,8 @@ const DEMO_PRESETS = [
     subtitle: 'Beni Suef Nile Valley (MODIS + VIIRS)',
     center: [29.0172, 31.2038],
     zoom: 14,
-    badge: 'Zoom 14',
+    basemap: 'satellite',
+    prompt: 'Take me to Egypt 1km vs 375m footprints',
     border: '#9333ea',
     bg: 'rgba(147, 51, 234, 0.16)'
   },
@@ -50,7 +51,8 @@ const DEMO_PRESETS = [
     subtitle: 'Ain Sokhna Industrial + 1km/375m',
     center: [29.6915, 32.3225],
     zoom: 14,
-    badge: 'Zoom 14',
+    basemap: 'satellite',
+    prompt: 'Show me Gulf of Suez industrial flares',
     border: '#eab308',
     bg: 'rgba(234, 179, 8, 0.15)'
   },
@@ -60,39 +62,144 @@ const DEMO_PRESETS = [
     subtitle: '2,006 MW Nested 375m inside 1km',
     center: [12.315, 20.492],
     zoom: 13,
-    badge: 'Zoom 13',
+    basemap: 'dark',
+    prompt: 'Fly to the biggest Dual-Sensor Megafire',
     border: '#f97316',
     bg: 'rgba(249, 115, 22, 0.16)'
+  },
+  {
+    id: 'wind_corridor',
+    title: '🌪️ Wind Speed Heat Corridor',
+    subtitle: 'Open-Meteo Thermal Spread Risk',
+    center: [12.315, 20.492],
+    zoom: 7,
+    basemap: 'dark',
+    prompt: 'Activate Wind Speed Heat Layer and arrows',
+    border: '#38bdf8',
+    bg: 'rgba(56, 189, 248, 0.14)'
   },
   {
     id: 'basra_flares',
     title: '🛢️ Basra Oil Field Flares',
     subtitle: 'Persian Gulf Industrial Masking',
     center: [30.7, 47.55],
-    zoom: 9,
-    badge: 'Zoom 9',
-    border: '#38bdf8',
-    bg: 'rgba(56, 189, 248, 0.14)'
-  },
-  {
-    id: 'egypt_overview',
-    title: '🇪🇬 Egypt Full Overview',
-    subtitle: 'Nile Delta, Sinai & Red Sea',
-    center: [28.2, 31.2],
-    zoom: 6,
-    badge: 'Zoom 6',
+    zoom: 10,
+    basemap: 'satellite',
+    prompt: 'Take me to Basra oil flares',
     border: '#10b981',
     bg: 'rgba(16, 185, 129, 0.14)'
   },
   {
     id: 'global_reset',
     title: '🌍 Global Planetary View',
-    subtitle: 'All Harmonized Active Clusters',
+    subtitle: 'All 11,505 Harmonized Clusters',
     center: [22.0, 25.0],
     zoom: 3,
-    badge: 'Zoom 3',
+    basemap: 'dark',
+    prompt: 'Pull back to Global Planetary Overview',
     border: '#64748b',
     bg: 'rgba(100, 116, 139, 0.16)'
+  }
+];
+
+const NASA_SLIDES = [
+  {
+    num: 1,
+    tag: 'SLIDE 1 / 7 • MISSION HOOK',
+    title: 'SPARKGRID: Harmonizing the Planet’s Fire Sentinels',
+    subtitle: 'NASA Space Apps Challenge Cairo 2026 • Challenge: Harmonization of MODIS & VIIRS Hot Spots',
+    bullets: [
+      '🔥 The Emergency Crisis: Wildfire command centers are overwhelmed by conflicting, duplicate satellite alerts during peak fire seasons.',
+      '🛰️ Our Solution: SparkGrid is a real-time Spatiotemporal Harmonization Engine + God’s Eye AI Tactical Map HUD live at https://sparkgrid.masarat.app.',
+      '📊 Proven Impact: Compressed 27,672 raw NASA satellite detections into 11,505 unified clusters (2.45× deduplication) while isolating 672 Dual-Sensor Verified fires.'
+    ],
+    metricLabel: '2.45×',
+    metricSub: 'Telemetry Redundancy Reduction (27,672 ➔ 11,505 Clusters)',
+    tourPrompt: 'Pull back to Global Planetary Overview'
+  },
+  {
+    num: 2,
+    tag: 'SLIDE 2 / 7 • THE SCIENTIFIC DILEMMA',
+    title: 'Why Raw MODIS (1km) & VIIRS (375m) Data Clash',
+    subtitle: 'Resolving Spatial Granularity, Orbital Timing & Radiometric Discrepancies',
+    bullets: [
+      '🟠 MODIS (Terra & Aqua): 1000m × 1000m nadir pixel (1.00 km² area), continuous 0–100% confidence, 10:30 AM / 1:30 PM passes.',
+      '🔴 VIIRS (Suomi-NPP, NOAA-20/21): 375m × 375m I-Band pixel (0.14 km² area — 7.1× tighter!), categorical low/nominal/high confidence.',
+      '⚠️ Without Harmonization: A single 1 km² blaze triggers 1 MODIS box + up to 7 overlapping VIIRS pixels, inflating burned area estimates and misdirecting aerial water drops.'
+    ],
+    metricLabel: '7.1×',
+    metricSub: 'Tighter Spatial Area Resolution with VIIRS (0.14 km² vs 1.00 km²)',
+    tourPrompt: 'Take me to Egypt 1km vs 375m footprints'
+  },
+  {
+    num: 3,
+    tag: 'SLIDE 3 / 7 • ALGORITHMIC ARCHITECTURE',
+    title: 'The 8-Stage Spatiotemporal Harmonization Pipeline',
+    subtitle: 'Great-Circle Haversine DBSCAN + FRP-Weighted Centroids + Bayesian Fusion',
+    bullets: [
+      '1️⃣ Unified Confidence Mapping: Normalizes MODIS [0–100] and VIIRS [low=0.30, nom=0.70, high=0.95] into a common probability space.',
+      '2️⃣ Spherical Haversine DBSCAN: Clusters detections within ε = 1.5 km on the Earth’s sphere across a |Δt| ≤ 120-minute orbital window.',
+      '3️⃣ FRP-Weighted Centroids & Bayesian Fusion: Anchors cluster centers to maximum radiative power and computes C_fused = 1 − ∏(1 − c_i).'
+    ],
+    metricLabel: '672',
+    metricSub: 'Dual-Sensor Cross-Validated Wildfires (MODIS + VIIRS Simultaneous)',
+    tourPrompt: 'Fly to the biggest Dual-Sensor Megafire'
+  },
+  {
+    num: 4,
+    tag: 'SLIDE 4 / 7 • METEOROLOGICAL & FLARE INTELLIGENCE',
+    title: 'Open-Meteo Wind Vectors & Industrial Flare Masking',
+    subtitle: 'Transforming Static Thermal Dots into Dynamic Fire-Spread Predictions',
+    bullets: [
+      '🏹 Fire-Spread Azimuth Arrows (spread_heading_deg): Queries Open-Meteo 10m wind vectors in 50-coordinate batches to compute θ_spread = (θ_wind + 180°) mod 360°.',
+      '🌪️ Wind Speed Heat Layer (wind_speed_mps): Dynamically scales marker radius and 4-tier thermal color risk (<2.5 m/s Cyan to >8 m/s Crimson).',
+      '🏭 Industrial Flare Filter (is_industrial): Masks 175 persistent oil/gas flares in the Gulf of Suez, Sinai, Basra, and Niger Delta to prevent false dispatches.'
+    ],
+    metricLabel: '10,106',
+    metricSub: 'Active Clusters Enriched with Real-Time Wind & Spread Vectors',
+    tourPrompt: 'Show me Gulf of Suez industrial flares'
+  },
+  {
+    num: 5,
+    tag: 'SLIDE 5 / 7 • GOD’S EYE AI & TACTICAL HUD',
+    title: 'God’s Eye Voice AI Commander & Smartphone-Ready HUD',
+    subtitle: 'Talk to the Map: Voice-Guided Camera Flights + Instant Responder Action Plans',
+    bullets: [
+      '👁️ God’s Eye Voice & Camera AI: Speak or type "Take me to Egypt" or "Show me the biggest megafire"—the AI flies the camera, toggles polygons, and narrates the science out loud.',
+      '⚡ Automated Incident Action Plans: 1-click AI briefing calculates evacuation bearings, spread velocity in km/h, and containment buffer zones.',
+      '📱 Cross-Platform Responsive Design: Works seamlessly on Emergency Command Walls (Desktop) and Field Responder Smartphones (Mobile Bottom Sheet).'
+    ],
+    metricLabel: '100%',
+    metricSub: 'Live Interactive Web & Smartphone Compatibility',
+    tourPrompt: 'Activate Wind Speed Heat Layer and arrows'
+  },
+  {
+    num: 6,
+    tag: 'SLIDE 6 / 7 • EMPIRICAL BENCHMARKS & EGYPT CASE STUDY',
+    title: 'Global Planetary Run + Egypt & Red Sea Regional Validation',
+    subtitle: 'Verified Telemetry Across 11,505 Global Clusters & 45 Featured Egypt Hotspots',
+    bullets: [
+      '🇪🇬 Egypt Case Study (Beni Suef & Gulf of Suez): Demonstrates side-by-side 1000m MODIS (`SG-EG-0003`) and 375m VIIRS (`SG-EG-0010`) agricultural fires plus Ain Sokhna offshore flares.',
+      '⚡ Total Radiative Energy Tracked: 296,892.71 MW globally (Mean: 25.81 MW, Peak megafire cluster: 3,635.08 MW).',
+      '📥 Open GIS Interoperability: 1-click export of filtered GeoJSON and CSV datasets for civil defense and environmental researchers.'
+    ],
+    metricLabel: '296.9 GW',
+    metricSub: 'Cumulative Fire Radiative Power Harmonized Globally',
+    tourPrompt: 'Take me to Egypt 1km vs 375m footprints'
+  },
+  {
+    num: 7,
+    tag: 'SLIDE 7 / 7 • OPEN SOURCE & FUTURE ROADMAP',
+    title: 'Production Cloud Architecture & Next-Generation Roadmap',
+    subtitle: 'Built for NASA Space Apps Cairo 2026 • Open Source & Live Today',
+    bullets: [
+      '☁️ Cloud Infrastructure: Hosted on Azure Ubuntu VMs behind Cloudflare Zero Trust SSL Tunnels with 2-minute automated GitHub CI/CD (`deploy.sh`).',
+      '🚀 Phase 2 Roadmap: Direct integration with NASA Earthdata WebSockets, burnt-area perimeter polygon forecasting (Rothermel spread model), and SMS civil defense alerts.',
+      '🔗 Live Links: App: https://sparkgrid.masarat.app • API Docs: https://sparkgrid-api.masarat.app/docs • GitHub: https://github.com/freefirenoobs/sparkgrid'
+    ],
+    metricLabel: 'LIVE',
+    metricSub: 'https://sparkgrid.masarat.app • Ready for Global Deployment',
+    tourPrompt: 'Pull back to Global Planetary Overview'
   }
 ];
 
@@ -102,7 +209,7 @@ function MapCameraController({ flyTarget }) {
     if (flyTarget && flyTarget.center) {
       map.flyTo(flyTarget.center, flyTarget.zoom || 13, {
         animate: true,
-        duration: 1.25
+        duration: 1.35
       });
     }
   }, [flyTarget, map]);
@@ -187,18 +294,20 @@ export default function App() {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showSlidesModal, setShowSlidesModal] = useState(false);
+  const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
   const [showLegend, setShowLegend] = useState(true);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [sensorFilter, setSensorFilter] = useState('ALL');
-  const [dayNightFilter, setDayNightFilter] = useState('ALL'); // 'ALL' | 'D' | 'N'
+  const [dayNightFilter, setDayNightFilter] = useState('ALL');
   const [minFrp, setMinFrp] = useState(0);
-  const [timeProgress, setTimeProgress] = useState(100); // 1% to 100% of 24h timeline
+  const [timeProgress, setTimeProgress] = useState(100);
   const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
 
   const [basemap, setBasemap] = useState('dark');
-  const [apiMode, setApiMode] = useState('WIND_500'); // 'WIND_500' | 'ALL_3000'
+  const [apiMode, setApiMode] = useState('WIND_500');
   const [selectedFire, setSelectedFire] = useState(null);
   const [flyTarget, setFlyTarget] = useState(null);
 
@@ -206,8 +315,21 @@ export default function App() {
   const [showSpreadArrows, setShowSpreadArrows] = useState(true);
   const [showFootprints, setShowFootprints] = useState(true);
   const [showWindHeat, setShowWindHeat] = useState(false);
-  const [industrialMode, setIndustrialMode] = useState('HIGHLIGHT'); // 'HIGHLIGHT' | 'GRAY_OUT' | 'HIDE'
+  const [industrialMode, setIndustrialMode] = useState('HIGHLIGHT');
   const [industrialGrayOutCheckbox, setIndustrialGrayOutCheckbox] = useState(false);
+
+  // GOD'S EYE AI VOICE & CAMERA TOUR STATE
+  const [godsEyeBanner, setGodsEyeBanner] = useState({
+    visible: true,
+    locationTitle: '👁️ God’s Eye AI Commander Ready',
+    narration:
+      'Tap the 🎙️ Mic or click any destination below—I will fly the satellite camera there, toggle the scientific layers, and explain what you are seeing out loud!'
+  });
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [isListeningMic, setIsListeningMic] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoTourRunning, setAutoTourRunning] = useState(false);
+  const tourTimeoutRef = useRef(null);
 
   // Role 5 AI Incident Briefing & Chat
   const [aiBriefing, setAiBriefing] = useState(null);
@@ -217,9 +339,127 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([
     {
       role: 'assistant',
-      text: '🛰️ Welcome to SparkGrid AI (NASA Space Apps Cairo 2026). Tap any quick prompt below or ask me about MODIS (1km) vs VIIRS (375m) footprints, Egypt & Suez hotspots, wind-spread vectors, or firefighting action plans!'
+      text: '👁️ Welcome to SparkGrid God’s Eye AI! Ask me to take you anywhere (e.g., "Take me to Egypt 1km vs 375m", "Show me Suez flares", "Fly to the biggest megafire")—I will fly the camera and narrate live!'
     }
   ]);
+
+  // Speak text aloud via Web Speech Synthesis API
+  const speakNarration = (text) => {
+    if (!voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = 1.03;
+      utter.pitch = 1.0;
+      utter.onstart = () => setIsSpeaking(true);
+      utter.onend = () => setIsSpeaking(false);
+      utter.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utter);
+    } catch (e) {
+      console.error('Speech synthesis error:', e);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    if (tourTimeoutRef.current) {
+      clearTimeout(tourTimeoutRef.current);
+      tourTimeoutRef.current = null;
+    }
+    setAutoTourRunning(false);
+  };
+
+  // Apply Camera & Layer Action returned by God's Eye AI
+  const executeGodsEyeAction = (action, speechText, replyText) => {
+    if (action) {
+      if (action.basemap) setBasemap(action.basemap);
+      if (typeof action.showFootprints === 'boolean') setShowFootprints(action.showFootprints);
+      if (typeof action.showSpreadArrows === 'boolean') setShowSpreadArrows(action.showSpreadArrows);
+      if (typeof action.showWindHeat === 'boolean') setShowWindHeat(action.showWindHeat);
+      if (action.industrialMode) {
+        setIndustrialMode(action.industrialMode);
+        setIndustrialGrayOutCheckbox(action.industrialMode === 'GRAY_OUT');
+      }
+      if (action.cluster_id && hotspots.length > 0) {
+        const found = hotspots.find((f) => f.properties?.cluster_id === action.cluster_id);
+        if (found) setSelectedFire(found.properties);
+      }
+      if (action.center) {
+        setFlyTarget({
+          center: action.center,
+          zoom: action.zoom || 13,
+          ts: Date.now()
+        });
+      }
+    }
+    if (speechText || replyText) {
+      setGodsEyeBanner({
+        visible: true,
+        locationTitle: action?.location_title || '👁️ God’s Eye AI Analysis',
+        narration: speechText || replyText
+      });
+      if (speechText) speakNarration(speechText);
+    }
+  };
+
+  // Voice Recognition (Mic Input)
+  const startMicRecognition = () => {
+    const SpeechRec =
+      typeof window !== 'undefined' &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SpeechRec) {
+      alert('Voice recognition works best in Chrome or Edge. You can also type or tap any God’s Eye button!');
+      return;
+    }
+    try {
+      const rec = new SpeechRec();
+      rec.lang = 'en-US';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      setIsListeningMic(true);
+      rec.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript || '';
+        setIsListeningMic(false);
+        if (transcript) {
+          sendPromptToAi(transcript);
+        }
+      };
+      rec.onerror = () => setIsListeningMic(false);
+      rec.onend = () => setIsListeningMic(false);
+      rec.start();
+    } catch (e) {
+      setIsListeningMic(false);
+    }
+  };
+
+  // Automated 4-Stop God's Eye Guided Tour
+  const startAutoGuidedTour = () => {
+    if (autoTourRunning) {
+      stopSpeaking();
+      return;
+    }
+    setAutoTourRunning(true);
+    const stops = [
+      'Pull back to Global Planetary Overview',
+      'Take me to Egypt 1km vs 375m footprints',
+      'Show me Gulf of Suez industrial flares',
+      'Fly to the biggest Dual-Sensor Megafire'
+    ];
+    let step = 0;
+    const runNext = () => {
+      if (step >= stops.length) {
+        setAutoTourRunning(false);
+        return;
+      }
+      sendPromptToAi(stops[step]);
+      step++;
+      tourTimeoutRef.current = setTimeout(runNext, 11000);
+    };
+    runNext();
+  };
 
   const fetchData = async (mode = apiMode) => {
     setLoading(true);
@@ -238,7 +478,6 @@ export default function App() {
       setHotspots(feats);
       setStats(sData);
       if (!selectedFire && feats.length > 0) {
-        // Pre-select the dual-verified Egypt cluster SG-EG-0010 if available
         const egDual = feats.find((f) => f.properties?.cluster_id === 'SG-EG-0010') || feats[0];
         setSelectedFire(egDual.properties);
       }
@@ -253,7 +492,6 @@ export default function App() {
     fetchData(apiMode);
   }, [apiMode]);
 
-  // 24h Chronological Time-Scrubber Playback Effect
   useEffect(() => {
     if (!isPlayingTimeline) return;
     const timer = setInterval(() => {
@@ -291,6 +529,9 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setAiBriefing(data);
+        if (data.action_plan?.[0]) {
+          speakNarration(`${data.classification}. ${data.action_plan[0]}`);
+        }
       }
     } catch (e) {
       console.error('Briefing error:', e);
@@ -320,6 +561,9 @@ export default function App() {
         ...prev,
         { role: 'assistant', text: data.reply || 'No response from AI.' }
       ]);
+      if (data.camera_action || data.speech) {
+        executeGodsEyeAction(data.camera_action, data.speech, data.reply);
+      }
     } catch (err) {
       setChatMessages((prev) => [
         ...prev,
@@ -332,40 +576,9 @@ export default function App() {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    const q = searchQuery.trim().toLowerCase();
+    const q = searchQuery.trim();
     if (!q) return;
-
-    if (q.includes('egypt') || q.includes('nile') || q.includes('beni') || q.includes('cairo')) {
-      setFlyTarget({ center: [29.0172, 31.2038], zoom: 14, ts: Date.now() });
-      return;
-    }
-    if (q.includes('suez') || q.includes('sinai') || q.includes('sokhna')) {
-      setFlyTarget({ center: [29.6915, 32.3225], zoom: 14, ts: Date.now() });
-      return;
-    }
-
-    // Check if lat,lon pair
-    const coordMatch = q.match(/^(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)$/);
-    if (coordMatch) {
-      setFlyTarget({
-        center: [parseFloat(coordMatch[1]), parseFloat(coordMatch[3])],
-        zoom: 13,
-        ts: Date.now()
-      });
-      return;
-    }
-
-    // Search by cluster_id
-    const match = hotspots.find((f) =>
-      String(f.properties?.cluster_id || '').toLowerCase().includes(q)
-    );
-    if (match) {
-      const p = match.properties;
-      setSelectedFire(p);
-      setActiveTab('INSPECT');
-      setMobileSheetOpen(true);
-      setFlyTarget({ center: [Number(p.latitude), Number(p.longitude)], zoom: 14, ts: Date.now() });
-    }
+    sendPromptToAi(q);
   };
 
   const filteredHotspots = useMemo(() => {
@@ -410,7 +623,6 @@ export default function App() {
     return { dual, ind, modis1k, viirs375, egypt };
   }, [hotspots]);
 
-  // Client-side export of currently filtered hotspots
   const exportCurrentSlice = (format) => {
     if (format === 'geojson') {
       const blob = new Blob(
@@ -539,11 +751,12 @@ export default function App() {
     }
   };
 
+  const activeSlide = NASA_SLIDES[currentSlideIdx];
+
   return (
     <div className="sg-app">
       {/* TOP COMMAND HEADER */}
       <header className="sg-header">
-        {/* Brand & Live Status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
             onClick={() => setSidebarCollapsed((c) => !c)}
@@ -567,7 +780,7 @@ export default function App() {
           </button>
 
           <div
-            onClick={() => setFlyTarget({ center: [28.2, 31.2], zoom: 6, ts: Date.now() })}
+            onClick={() => sendPromptToAi('Pull back to Global Planetary Overview')}
             style={{ display: 'flex', alignItems: 'center', gap: '9px', cursor: 'pointer' }}
           >
             <div
@@ -605,7 +818,7 @@ export default function App() {
                   }}
                 >
                   <span className="status-dot" style={{ width: '5px', height: '5px' }} />
-                  LIVE 2.45×
+                  GOD’S EYE AI
                 </span>
               </div>
               <div
@@ -618,21 +831,39 @@ export default function App() {
           </div>
         </div>
 
-        {/* Center Search Box (Desktop) */}
+        {/* Center Voice & Text God's Eye Command Bar (Desktop) */}
         <form
           onSubmit={handleSearchSubmit}
           className="sg-hide-mobile"
-          style={{ flex: 1, maxWidth: '340px', display: 'flex', gap: '6px' }}
+          style={{ flex: 1, maxWidth: '410px', display: 'flex', gap: '6px', alignItems: 'center' }}
         >
+          <button
+            type="button"
+            onClick={startMicRecognition}
+            title="Speak to God's Eye AI (Voice Navigation)"
+            style={{
+              padding: '6px 10px',
+              borderRadius: '8px',
+              border: isListeningMic ? '1px solid #ef4444' : '1px solid rgba(56,189,248,0.4)',
+              background: isListeningMic ? '#dc2626' : 'rgba(2,132,199,0.25)',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            {isListeningMic ? '🎙️ Listening...' : '🎙️ Talk'}
+          </button>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="🔍 Search Cluster ID (SG-EG-0003), Egypt, Suez, or lat,lon..."
+            placeholder="👁️ Ask God's Eye AI: 'Take me to Egypt', 'Suez flares', 'Megafire'..."
             style={{
               width: '100%',
               background: '#0d1526',
-              border: '1px solid rgba(148,163,184,0.22)',
+              border: '1px solid rgba(148,163,184,0.25)',
               borderRadius: '8px',
               padding: '6px 11px',
               color: '#f8fafc',
@@ -645,14 +876,50 @@ export default function App() {
         {/* Right Quick Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button
-            onClick={() => setApiMode((m) => (m === 'WIND_500' ? 'ALL_3000' : 'WIND_500'))}
+            onClick={startAutoGuidedTour}
             style={{
               padding: '6px 10px',
               fontSize: '11px',
+              fontWeight: 800,
+              borderRadius: '7px',
+              border: '1px solid rgba(56,189,248,0.55)',
+              background: autoTourRunning
+                ? '#dc2626'
+                : 'linear-gradient(135deg, #0284c7, #7c3aed)',
+              color: '#fff',
+              cursor: 'pointer',
+              boxShadow: '0 0 12px rgba(56,189,248,0.35)'
+            }}
+          >
+            {autoTourRunning ? '⏹ Stop Tour' : '👁️ AI Tour'}
+          </button>
+
+          <button
+            onClick={() => setShowSlidesModal(true)}
+            style={{
+              padding: '6px 10px',
+              fontSize: '11px',
+              fontWeight: 800,
+              borderRadius: '7px',
+              border: '1px solid rgba(251,146,60,0.55)',
+              background: 'linear-gradient(135deg, rgba(255,42,95,0.4), rgba(255,107,0,0.4))',
+              color: '#fff',
+              cursor: 'pointer'
+            }}
+          >
+            📊 7-Slide Deck
+          </button>
+
+          <button
+            onClick={() => setApiMode((m) => (m === 'WIND_500' ? 'ALL_3000' : 'WIND_500'))}
+            className="sg-hide-mobile"
+            style={{
+              padding: '6px 9px',
+              fontSize: '11px',
               fontWeight: 700,
               borderRadius: '7px',
-              border: '1px solid rgba(56,189,248,0.4)',
-              background: apiMode === 'WIND_500' ? 'rgba(2,132,199,0.28)' : '#141d31',
+              border: '1px solid rgba(148,163,184,0.25)',
+              background: '#141d31',
               color: '#38bdf8',
               cursor: 'pointer'
             }}
@@ -665,7 +932,7 @@ export default function App() {
             className="sg-hide-mobile"
             title="Download Filtered GeoJSON"
             style={{
-              padding: '6px 9px',
+              padding: '6px 8px',
               fontSize: '11px',
               fontWeight: 600,
               borderRadius: '7px',
@@ -679,32 +946,15 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => exportCurrentSlice('csv')}
+            onClick={() => setShowGuideModal(true)}
             className="sg-hide-mobile"
-            title="Download Filtered CSV"
             style={{
               padding: '6px 9px',
               fontSize: '11px',
-              fontWeight: 600,
-              borderRadius: '7px',
-              border: '1px solid rgba(148,163,184,0.2)',
-              background: '#141d31',
-              color: '#e2e8f0',
-              cursor: 'pointer'
-            }}
-          >
-            📊 CSV
-          </button>
-
-          <button
-            onClick={() => setShowGuideModal(true)}
-            style={{
-              padding: '6px 11px',
-              fontSize: '11px',
               fontWeight: 700,
               borderRadius: '7px',
-              border: '1px solid rgba(168,85,247,0.5)',
-              background: 'linear-gradient(135deg, rgba(147,51,234,0.35), rgba(255,42,95,0.35))',
+              border: '1px solid rgba(168,85,247,0.4)',
+              background: 'rgba(147,51,234,0.25)',
               color: '#f3e8ff',
               cursor: 'pointer'
             }}
@@ -716,19 +966,18 @@ export default function App() {
 
       {/* MAIN WORKSPACE */}
       <div className="sg-workspace">
-        {/* MISSION CONTROL SIDEBAR (Desktop Left Panel / Mobile Slide-Up Bottom Sheet) */}
+        {/* MISSION CONTROL SIDEBAR */}
         <aside
           className={`sg-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${
             mobileSheetOpen ? '' : 'mobile-hidden'
           }`}
         >
-          {/* Mobile Sheet Drag / Close Bar */}
           <div className="sg-mobile-sheet-header">
             <span style={{ fontSize: '12px', fontWeight: 800, color: '#38bdf8' }}>
               {activeTab === 'LAYERS' && '🎛️ Tactical Layers & Filters'}
-              {activeTab === 'LOCATIONS' && '🎯 Demo Locations & Feed'}
+              {activeTab === 'LOCATIONS' && '🎯 God’s Eye Locations & Feed'}
               {activeTab === 'INSPECT' && '🔍 Cluster Telemetry & AI Briefing'}
-              {activeTab === 'AI' && '🤖 SparkGrid AI Copilot'}
+              {activeTab === 'AI' && '👁️ God’s Eye Voice & Chat AI'}
             </span>
             <button
               onClick={() => setMobileSheetOpen(false)}
@@ -747,7 +996,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Desktop 4-Tab Switcher */}
           <div
             className="sg-hide-mobile"
             style={{
@@ -762,7 +1010,7 @@ export default function App() {
               { id: 'LAYERS', label: '🎛️ Layers' },
               { id: 'LOCATIONS', label: '🎯 Demo' },
               { id: 'INSPECT', label: '🔍 Inspect' },
-              { id: 'AI', label: '🤖 AI Chat' }
+              { id: 'AI', label: '👁️ God’s Eye' }
             ].map((t) => (
               <button
                 key={t.id}
@@ -789,7 +1037,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Scrollable Tab Body */}
           <div
             style={{
               flex: 1,
@@ -803,7 +1050,6 @@ export default function App() {
             {/* ================= TAB 1: LAYERS & FILTERS ================= */}
             {activeTab === 'LAYERS' && (
               <>
-                {/* 4 KPI Telemetry Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div
                     style={{
@@ -902,7 +1148,6 @@ export default function App() {
                     🛰️ Tactical Map Overlays (Role 3)
                   </div>
 
-                  {/* Toggle 1: Spread Direction Arrows */}
                   <label
                     style={{
                       display: 'flex',
@@ -931,7 +1176,6 @@ export default function App() {
                     />
                   </label>
 
-                  {/* Toggle 2: 1km vs 375m Footprint Polygons */}
                   <label
                     style={{
                       display: 'flex',
@@ -960,7 +1204,6 @@ export default function App() {
                     />
                   </label>
 
-                  {/* Toggle 3: Wind Speed Heat Layer */}
                   <label
                     style={{
                       display: 'flex',
@@ -1009,7 +1252,6 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Toggle 4: Industrial Flare Filter */}
                   <div
                     style={{
                       padding: '8px 9px',
@@ -1079,7 +1321,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* SENSOR, FRP & 24H TIMELINE CONTROLS (Role 4) */}
+                {/* SENSOR, FRP & 24H TIMELINE CONTROLS */}
                 <div
                   style={{
                     background: 'var(--bg-card)',
@@ -1122,7 +1364,6 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* Minimum FRP Slider */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '3px' }}>
                       <span style={{ color: '#94a3b8' }}>🔥 Min Radiative Power (FRP):</span>
@@ -1139,7 +1380,6 @@ export default function App() {
                     />
                   </div>
 
-                  {/* 24-Hour Chronological Time Scrubber */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginBottom: '4px' }}>
                       <span style={{ color: '#94a3b8' }}>⏱️ 24h Orbital Progression:</span>
@@ -1175,7 +1415,6 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Day/Night & Basemap Row */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
                     {Object.entries(BASEMAPS).map(([key, bm]) => (
                       <button
@@ -1212,21 +1451,14 @@ export default function App() {
                   }}
                 >
                   <div style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    🎯 Instant Judge Demo Camera Presets
+                    👁️ God’s Eye Voice-Narrated Destinations
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                     {DEMO_PRESETS.map((preset) => (
                       <button
                         key={preset.id}
                         onClick={() => {
-                          setShowFootprints(true);
-                          setShowSpreadArrows(true);
-                          setSensorFilter('ALL');
-                          setFlyTarget({
-                            center: preset.center,
-                            zoom: preset.zoom,
-                            ts: Date.now()
-                          });
+                          sendPromptToAi(preset.prompt);
                           setMobileSheetOpen(false);
                         }}
                         style={{
@@ -1248,7 +1480,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Live Scrollable Hotspot Feed */}
                 <div
                   style={{
                     background: 'var(--bg-card)',
@@ -1383,7 +1614,6 @@ export default function App() {
                       </span>
                     </div>
 
-                    {/* Telemetry Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', fontSize: '11px' }}>
                       <div style={{ background: '#0b1120', padding: '8px', borderRadius: '7px' }}>
                         <div style={{ color: '#94a3b8', fontSize: '10px' }}>PIXEL FOOTPRINT</div>
@@ -1428,7 +1658,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Visual 1000m vs 375m Scale Diagram */}
                     <div
                       style={{
                         background: '#0b1120',
@@ -1469,7 +1698,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
                       <button
                         onClick={() => {
@@ -1510,11 +1738,10 @@ export default function App() {
                           cursor: 'pointer'
                         }}
                       >
-                        {briefingLoading ? '⏳ Analyzing...' : '⚡ AI Action Plan'}
+                        {briefingLoading ? '⏳ Analyzing...' : '⚡ AI Voice Action Plan'}
                       </button>
                     </div>
 
-                    {/* AI Tactical Incident Action Plan Result */}
                     {aiBriefing && (
                       <div
                         style={{
@@ -1545,7 +1772,7 @@ export default function App() {
               </div>
             )}
 
-            {/* ================= TAB 4: SPARKGRID AI COPILOT ================= */}
+            {/* ================= TAB 4: GOD'S EYE VOICE & CHAT AI ================= */}
             {activeTab === 'AI' && (
               <div
                 style={{
@@ -1554,11 +1781,10 @@ export default function App() {
                   border: '1px solid var(--border-subtle)',
                   display: 'flex',
                   flexDirection: 'column',
-                  height: '450px',
+                  height: '460px',
                   overflow: 'hidden'
                 }}
               >
-                {/* Quick Prompt Chips */}
                 <div
                   style={{
                     padding: '8px',
@@ -1570,11 +1796,11 @@ export default function App() {
                   }}
                 >
                   {[
-                    '📐 1km vs 375m Footprints',
-                    '🇪🇬 Egypt & Suez Analysis',
-                    '🌪️ Wind Spread Vectors',
-                    '🏭 Industrial Flares',
-                    '⚡ Brief Selected Fire'
+                    '🇪🇬 Take me to Egypt 1km vs 375m',
+                    '🏭 Show me Gulf of Suez flares',
+                    '🔥 Fly to 2,006 MW Megafire',
+                    '🌪️ Activate Wind Speed Heat Layer',
+                    '🌍 Global Planetary Overview'
                   ].map((chip) => (
                     <button
                       key={chip}
@@ -1595,7 +1821,6 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Chat Messages */}
                 <div
                   style={{
                     flex: 1,
@@ -1627,12 +1852,11 @@ export default function App() {
                   ))}
                   {chatLoading && (
                     <div style={{ color: '#38bdf8', fontSize: '11px' }}>
-                      🛰️ Analyzing NASA FIRMS & Open-Meteo telemetry...
+                      👁️ God’s Eye AI flying camera & analyzing telemetry...
                     </div>
                   )}
                 </div>
 
-                {/* Input Form */}
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1646,10 +1870,24 @@ export default function App() {
                     gap: '6px'
                   }}
                 >
+                  <button
+                    type="button"
+                    onClick={startMicRecognition}
+                    style={{
+                      padding: '7px 10px',
+                      background: isListeningMic ? '#dc2626' : '#1e293b',
+                      border: '1px solid #38bdf8',
+                      borderRadius: '7px',
+                      color: '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🎙️
+                  </button>
                   <input
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask SparkGrid AI anything..."
+                    placeholder="Say 'Take me to Egypt' or ask anything..."
                     style={{
                       flex: 1,
                       background: '#111827',
@@ -1664,7 +1902,7 @@ export default function App() {
                   <button
                     type="submit"
                     style={{
-                      padding: '7px 13px',
+                      padding: '7px 12px',
                       background: 'linear-gradient(135deg, #ff2a5f, #ff6b00)',
                       border: 'none',
                       borderRadius: '7px',
@@ -1674,13 +1912,12 @@ export default function App() {
                       cursor: 'pointer'
                     }}
                   >
-                    Send
+                    Fly
                   </button>
                 </form>
               </div>
             )}
 
-            {/* Bottom Sync Button */}
             <button
               onClick={triggerPipeline}
               disabled={refreshing}
@@ -1703,14 +1940,26 @@ export default function App() {
 
         {/* INTERACTIVE LEAFLET MAP AREA */}
         <main className="sg-map-area">
-          {/* Mobile Horizontal Quick-Action Pills (Visible on Smartphones right over the map!) */}
+          {/* Mobile Horizontal Quick-Action Pills */}
           <div className="sg-mobile-pills">
             <button
-              onClick={() => {
-                setShowFootprints(true);
-                setShowSpreadArrows(true);
-                setFlyTarget({ center: [29.0172, 31.2038], zoom: 14, ts: Date.now() });
+              onClick={startMicRecognition}
+              style={{
+                flexShrink: 0,
+                padding: '5px 10px',
+                borderRadius: '999px',
+                border: '1px solid #38bdf8',
+                background: isListeningMic ? '#dc2626' : 'rgba(2, 132, 199, 0.92)',
+                color: '#fff',
+                fontSize: '11px',
+                fontWeight: 800
               }}
+            >
+              {isListeningMic ? '🎙️ Listening...' : '🎙️ Voice AI'}
+            </button>
+
+            <button
+              onClick={() => sendPromptToAi('Take me to Egypt 1km vs 375m footprints')}
               style={{
                 flexShrink: 0,
                 padding: '5px 10px',
@@ -1726,35 +1975,35 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setShowSpreadArrows((v) => !v)}
+              onClick={() => sendPromptToAi('Show me Gulf of Suez industrial flares')}
               style={{
                 flexShrink: 0,
                 padding: '5px 10px',
                 borderRadius: '999px',
-                border: showSpreadArrows ? '1px solid #38bdf8' : '1px solid #334155',
-                background: showSpreadArrows ? 'rgba(2, 132, 199, 0.88)' : 'rgba(15, 23, 42, 0.88)',
-                color: '#fff',
+                border: '1px solid #eab308',
+                background: 'rgba(113, 63, 18, 0.9)',
+                color: '#fef08a',
                 fontSize: '11px',
-                fontWeight: 600
+                fontWeight: 700
               }}
             >
-              🏹 Arrows {showSpreadArrows ? 'ON' : 'OFF'}
+              🏭 Suez Flares
             </button>
 
             <button
-              onClick={() => setShowFootprints((v) => !v)}
+              onClick={() => sendPromptToAi('Fly to the biggest Dual-Sensor Megafire')}
               style={{
                 flexShrink: 0,
                 padding: '5px 10px',
                 borderRadius: '999px',
-                border: showFootprints ? '1px solid #a855f7' : '1px solid #334155',
-                background: showFootprints ? 'rgba(147, 51, 234, 0.88)' : 'rgba(15, 23, 42, 0.88)',
-                color: '#fff',
+                border: '1px solid #f97316',
+                background: 'rgba(124, 45, 18, 0.9)',
+                color: '#ffedd5',
                 fontSize: '11px',
-                fontWeight: 600
+                fontWeight: 700
               }}
             >
-              📐 1km/375m {showFootprints ? 'ON' : 'OFF'}
+              🔥 2006 MW Fire
             </button>
 
             <button
@@ -1771,46 +2020,6 @@ export default function App() {
               }}
             >
               🌪️ Wind Heat
-            </button>
-
-            <button
-              onClick={() => {
-                const next = !industrialGrayOutCheckbox;
-                setIndustrialGrayOutCheckbox(next);
-                setIndustrialMode(next ? 'GRAY_OUT' : 'HIGHLIGHT');
-              }}
-              style={{
-                flexShrink: 0,
-                padding: '5px 10px',
-                borderRadius: '999px',
-                border: '1px solid #eab308',
-                background: industrialGrayOutCheckbox
-                  ? 'rgba(71, 85, 105, 0.9)'
-                  : 'rgba(161, 98, 7, 0.9)',
-                color: '#fff',
-                fontSize: '11px',
-                fontWeight: 600
-              }}
-            >
-              🏭 {industrialGrayOutCheckbox ? 'Flares Muted' : 'Flares Yellow'}
-            </button>
-
-            <button
-              onClick={() =>
-                setBasemap((b) => (b === 'dark' ? 'satellite' : b === 'satellite' ? 'terrain' : 'dark'))
-              }
-              style={{
-                flexShrink: 0,
-                padding: '5px 10px',
-                borderRadius: '999px',
-                border: '1px solid #475569',
-                background: 'rgba(15, 23, 42, 0.9)',
-                color: '#e2e8f0',
-                fontSize: '11px',
-                fontWeight: 600
-              }}
-            >
-              {BASEMAPS[basemap].short}
             </button>
           </div>
 
@@ -1847,7 +2056,6 @@ export default function App() {
 
               return (
                 <React.Fragment key={p.cluster_id || idx}>
-                  {/* 1. 1km vs 375m FOOTPRINT POLYGONS */}
                   {showFootprints && (
                     <>
                       {p.is_multi_sensor && (
@@ -1893,7 +2101,6 @@ export default function App() {
                     </>
                   )}
 
-                  {/* 2. WIND SPEED HEAT LAYER HALO */}
                   {showWindHeat && !isInd && style.glowRadius && (
                     <CircleMarker
                       center={[lat, lon]}
@@ -1907,7 +2114,6 @@ export default function App() {
                     />
                   )}
 
-                  {/* 3. CORE HOTSPOT CIRCLE MARKER */}
                   <CircleMarker
                     center={[lat, lon]}
                     radius={style.radius}
@@ -1981,14 +2187,13 @@ export default function App() {
                               cursor: 'pointer'
                             }}
                           >
-                            ⚡ AI Plan
+                            ⚡ AI Voice Plan
                           </button>
                         </div>
                       </div>
                     </Popup>
                   </CircleMarker>
 
-                  {/* 4. FIRE-SPREAD DIRECTION ARROWS */}
                   {showSpreadArrows && hasSpread && (
                     <>
                       {spreadLineEnd && (
@@ -2020,6 +2225,134 @@ export default function App() {
               );
             })}
           </MapContainer>
+
+          {/* 👁️ FLOATING GOD'S EYE AI VOICE NARRATOR & CAMERA COMMANDER DOCK */}
+          {godsEyeBanner.visible && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '16px',
+                left: '16px',
+                right: '290px',
+                minWidth: '290px',
+                maxWidth: '680px',
+                background: 'rgba(9, 14, 26, 0.94)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(56, 189, 248, 0.5)',
+                borderRadius: '14px',
+                padding: '11px 14px',
+                zIndex: 1000,
+                boxShadow: '0 12px 35px rgba(0,0,0,0.75)'
+              }}
+              className="sg-hide-mobile"
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                      background: isSpeaking ? '#ef4444' : '#0284c7',
+                      color: '#fff',
+                      fontSize: '10px',
+                      fontWeight: 800
+                    }}
+                  >
+                    {isSpeaking ? '🔊 SPEAKING LIVE' : '👁️ GOD’S EYE AI'}
+                  </span>
+                  <strong style={{ fontSize: '12px', color: '#38bdf8' }}>
+                    {godsEyeBanner.locationTitle}
+                  </strong>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    onClick={() => {
+                      const next = !voiceEnabled;
+                      setVoiceEnabled(next);
+                      if (!next) stopSpeaking();
+                    }}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      borderRadius: '6px',
+                      border: '1px solid rgba(148,163,184,0.25)',
+                      background: voiceEnabled ? 'rgba(16,185,129,0.2)' : '#1e293b',
+                      color: voiceEnabled ? '#34d399' : '#94a3b8',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {voiceEnabled ? '🔊 Voice ON' : '🔇 Muted'}
+                  </button>
+                  {isSpeaking && (
+                    <button
+                      onClick={stopSpeaking}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: '#dc2626',
+                        color: '#fff',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ⏹ Stop
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ fontSize: '11.5px', color: '#e2e8f0', lineHeight: 1.45, marginBottom: '8px' }}>
+                {godsEyeBanner.narration}
+              </div>
+
+              {/* 1-Click God's Eye Flight Chips */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  onClick={startMicRecognition}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    border: '1px solid #38bdf8',
+                    background: isListeningMic ? '#dc2626' : '#0284c7',
+                    color: '#fff',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isListeningMic ? '🎙️ Listening...' : '🎙️ Speak Destination'}
+                </button>
+                {[
+                  { label: '🇪🇬 Fly: Egypt 1km vs 375m', prompt: 'Take me to Egypt 1km vs 375m footprints' },
+                  { label: '🏭 Fly: Suez Oil Flares', prompt: 'Show me Gulf of Suez industrial flares' },
+                  { label: '🔥 Fly: 2,006 MW Megafire', prompt: 'Fly to the biggest Dual-Sensor Megafire' },
+                  { label: '🌪️ Fly: Wind Heat Corridor', prompt: 'Activate Wind Speed Heat Layer and arrows' },
+                  { label: '🌍 Fly: Planetary View', prompt: 'Pull back to Global Planetary Overview' }
+                ].map((b) => (
+                  <button
+                    key={b.label}
+                    onClick={() => sendPromptToAi(b.prompt)}
+                    style={{
+                      padding: '4px 9px',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(148,163,184,0.28)',
+                      background: 'rgba(30, 41, 59, 0.85)',
+                      color: '#f8fafc',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Collapsible Floating Legend Card */}
           {showLegend ? (
@@ -2100,14 +2433,14 @@ export default function App() {
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION DOCK (Smartphone Native Feel) */}
+      {/* MOBILE BOTTOM NAVIGATION DOCK */}
       <nav className="sg-mobile-dock">
         {[
           { id: 'MAP', icon: '🗺️', label: 'Map' },
           { id: 'LAYERS', icon: '🎛️', label: 'Layers' },
           { id: 'LOCATIONS', icon: '🎯', label: 'Demo' },
           { id: 'INSPECT', icon: '🔍', label: 'Inspect' },
-          { id: 'AI', icon: '🤖', label: 'AI Chat' }
+          { id: 'AI', icon: '👁️', label: 'God’s Eye' }
         ].map((item) => {
           const isActive =
             item.id === 'MAP'
@@ -2146,7 +2479,219 @@ export default function App() {
         })}
       </nav>
 
-      {/* INTERACTIVE MISSION GUIDE & SCIENTIFIC EXPLAINER MODAL */}
+      {/* 📊 OFFICIAL 7-SLIDE NASA SUBMISSION DECK MODAL */}
+      {showSlidesModal && (
+        <div
+          onClick={() => setShowSlidesModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(4, 7, 15, 0.88)',
+            backdropFilter: 'blur(10px)',
+            zIndex: 2100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(145deg, #0b1325 0%, #070b14 100%)',
+              border: '1px solid rgba(56, 189, 248, 0.45)',
+              borderRadius: '18px',
+              maxWidth: '840px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.85)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  color: '#38bdf8',
+                  padding: '4px 10px',
+                  borderRadius: '999px',
+                  background: 'rgba(2,132,199,0.2)',
+                  border: '1px solid rgba(56,189,248,0.35)'
+                }}
+              >
+                {activeSlide.tag}
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a
+                  href="/slides.html"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    padding: '6px 11px',
+                    borderRadius: '8px',
+                    background: '#0284c7',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    fontSize: '11px',
+                    fontWeight: 700
+                  }}
+                >
+                  🖨️ Open Printable / PDF Deck
+                </a>
+                <button
+                  onClick={() => setShowSlidesModal(false)}
+                  style={{
+                    background: '#1e293b',
+                    border: 'none',
+                    color: '#fff',
+                    borderRadius: '8px',
+                    padding: '6px 11px',
+                    cursor: 'pointer',
+                    fontWeight: 700
+                  }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#fff' }}>
+                {activeSlide.title}
+              </h2>
+              <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>
+                {activeSlide.subtitle}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', alignItems: 'stretch' }}>
+              <div
+                style={{
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(148,163,184,0.18)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  fontSize: '13px',
+                  lineHeight: 1.55,
+                  color: '#e2e8f0'
+                }}
+              >
+                {activeSlide.bullets.map((b, i) => (
+                  <div key={i}>{b}</div>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,42,95,0.18), rgba(147,51,234,0.22))',
+                  border: '1px solid rgba(168,85,247,0.4)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: '36px', fontWeight: 900, color: '#fff' }}>
+                  {activeSlide.metricLabel}
+                </div>
+                <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '6px', lineHeight: 1.4 }}>
+                  {activeSlide.metricSub}
+                </div>
+                <button
+                  onClick={() => {
+                    setShowSlidesModal(false);
+                    sendPromptToAi(activeSlide.tourPrompt);
+                  }}
+                  style={{
+                    marginTop: '14px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #38bdf8',
+                    background: 'rgba(2,132,199,0.3)',
+                    color: '#fff',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  👁️ Demonstrate Live on Map
+                </button>
+              </div>
+            </div>
+
+            {/* Slide Navigation Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                onClick={() => setCurrentSlideIdx((i) => Math.max(0, i - 1))}
+                disabled={currentSlideIdx === 0}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #334155',
+                  background: currentSlideIdx === 0 ? '#0f172a' : '#1e293b',
+                  color: currentSlideIdx === 0 ? '#475569' : '#fff',
+                  fontWeight: 700,
+                  cursor: currentSlideIdx === 0 ? 'default' : 'pointer'
+                }}
+              >
+                ◀ Previous Slide
+              </button>
+
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {NASA_SLIDES.map((s, idx) => (
+                  <button
+                    key={s.num}
+                    onClick={() => setCurrentSlideIdx(idx)}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: currentSlideIdx === idx ? '#ff2a5f' : '#1e293b',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {s.num}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCurrentSlideIdx((i) => Math.min(NASA_SLIDES.length - 1, i + 1))}
+                disabled={currentSlideIdx === NASA_SLIDES.length - 1}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background:
+                    currentSlideIdx === NASA_SLIDES.length - 1
+                      ? '#1e293b'
+                      : 'linear-gradient(90deg, #ff2a5f, #ff6b00)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: currentSlideIdx === NASA_SLIDES.length - 1 ? 'default' : 'pointer'
+                }}
+              >
+                Next Slide ▶
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INTERACTIVE MISSION GUIDE MODAL */}
       {showGuideModal && (
         <div
           onClick={() => setShowGuideModal(false)}
@@ -2212,11 +2757,11 @@ export default function App() {
               </div>
 
               <div style={{ background: '#131d33', padding: '12px', borderRadius: '10px', borderLeft: '4px solid #38bdf8' }}>
-                <strong style={{ color: '#fff' }}>2. How to Explore the 4 Tactical Layers:</strong>
+                <strong style={{ color: '#fff' }}>2. God’s Eye Voice AI & 4 Tactical Layers:</strong>
                 <ul style={{ margin: '6px 0 0 0', paddingLeft: '18px' }}>
+                  <li><b>👁️ God’s Eye Voice AI:</b> Click <b>🎙️ Talk</b> or <b>👁️ AI Tour</b>—the AI flies the camera to Egypt, Suez, or Central Africa and narrates the telemetry out loud!</li>
                   <li><b>📐 1km vs 375m Footprint Polygons:</b> Zoom to level 13–14 to see true-scale orange 1000m MODIS squares vs tight red 375m VIIRS squares.</li>
                   <li><b>🏹 Fire-Spread Direction Arrows:</b> Rotated azimuth arrows showing where Open-Meteo 10m winds are pushing the flame front (<code>spread_heading_deg</code>).</li>
-                  <li><b>🌪️ Wind Speed Heat Layer:</b> Scales hotspot radius and color intensity by wind speed (<code>wind_speed_mps</code>) to highlight rapid-spread hazards.</li>
                   <li><b>🏭 Industrial Flare Masking:</b> Highlights or grays out 175 persistent oil & gas flares in the Gulf of Suez, Sinai, and Persian Gulf.</li>
                 </ul>
               </div>
@@ -2226,9 +2771,7 @@ export default function App() {
               <button
                 onClick={() => {
                   setShowGuideModal(false);
-                  setShowFootprints(true);
-                  setShowSpreadArrows(true);
-                  setFlyTarget({ center: [29.0172, 31.2038], zoom: 14, ts: Date.now() });
+                  sendPromptToAi('Take me to Egypt 1km vs 375m footprints');
                 }}
                 style={{
                   padding: '10px',
@@ -2241,15 +2784,13 @@ export default function App() {
                   cursor: 'pointer'
                 }}
               >
-                🇪🇬 Tour 1: Egypt 1km vs 375m (Zoom 14)
+                🇪🇬 Tour 1: Egypt 1km vs 375m (Voice AI)
               </button>
 
               <button
                 onClick={() => {
                   setShowGuideModal(false);
-                  setShowFootprints(true);
-                  setShowSpreadArrows(true);
-                  setFlyTarget({ center: [12.315, 20.492], zoom: 13, ts: Date.now() });
+                  sendPromptToAi('Fly to the biggest Dual-Sensor Megafire');
                 }}
                 style={{
                   padding: '10px',
@@ -2262,7 +2803,7 @@ export default function App() {
                   cursor: 'pointer'
                 }}
               >
-                🔥 Tour 2: 2,006 MW Dual-Sensor Megafire
+                🔥 Tour 2: 2,006 MW Megafire (Voice AI)
               </button>
             </div>
           </div>
